@@ -101,14 +101,13 @@ struct wl_shm_pool *hello_create_memory_pool(int file)
     data->size = 0;
     data->fd = file;
 
-    data->memory = mmap(0, data->capacity*sizeof(pixel),
+    data->memory = mmap(0, data->capacity,
         PROT_READ, MAP_SHARED, data->fd, 0);
 
     if (data->memory == MAP_FAILED)
         goto cleanup_alloc;
 
-    pool = wl_shm_create_pool(shm, data->fd,
-        data->capacity*sizeof(pixel));
+    pool = wl_shm_create_pool(shm, data->fd, data->capacity);
 
     if (pool == NULL)
         goto cleanup_mmap;
@@ -118,7 +117,7 @@ struct wl_shm_pool *hello_create_memory_pool(int file)
     return pool;
 
 cleanup_mmap:
-    munmap(data->memory, data->capacity*sizeof(pixel));
+    munmap(data->memory, data->capacity);
 cleanup_alloc:
     free(data);
     return NULL;
@@ -130,7 +129,7 @@ void hello_free_memory_pool(struct wl_shm_pool *pool)
 
     data = wl_shm_pool_get_user_data(pool);
     wl_shm_pool_destroy(pool);
-    munmap(data->memory, data->capacity*sizeof(pixel));
+    munmap(data->memory, data->capacity);
     free(data);
 }
 
@@ -144,13 +143,13 @@ struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
 
     pool_data = wl_shm_pool_get_user_data(pool);
     buffer = wl_shm_pool_create_buffer(pool,
-        pool_data->size*sizeof(pixel), width, height,
+        pool_data->size, width, height,
         width*sizeof(pixel), PIXEL_FORMAT_ID);
 
     if (buffer == NULL)
         return NULL;
 
-    pool_data->size += width*height;
+    pool_data->size += width*height*sizeof(pixel);
 
     return buffer;
 }
