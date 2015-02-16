@@ -31,7 +31,7 @@ void hello_setup_wayland(void)
 
     registry = wl_display_get_registry(display);
     wl_registry_add_listener(registry, &registry_listener,
-        &compositor);
+        NULL);
     wl_display_roundtrip(display);
     wl_registry_destroy(registry);
 }
