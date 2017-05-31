@@ -1,5 +1,10 @@
 \nosecs
+@s int32_t int
 @* Main program.
+
+Here we discribe the complete set of steps necessary to communicate
+with the display server to display the hello world window and accept
+input from the pointer device, closing the application when clicked.
 
 @c
 #include <fcntl.h>
@@ -13,19 +18,7 @@
 @<Global...@>;
 @<Struct...@>;
 
-static const unsigned WIDTH = 320;
-static const unsigned HEIGHT = 200;
-static const unsigned CURSOR_WIDTH = 100;
-static const unsigned CURSOR_HEIGHT = 59;
-static const int32_t CURSOR_HOT_SPOT_X = 10;
-static const int32_t CURSOR_HOT_SPOT_Y = 35;
-
-static bool done = false;
-
-void on_button(uint32_t button)
-{
-    done = true;
-}
+@<Set callback function for mouse click@>;
 
 int main(void)
 {
@@ -70,6 +63,30 @@ int main(void)
     return EXIT_SUCCESS;
 }
 
+@ In this program we display an image as the main window and another for the cursor.
+Their geometry is hardcoded. In a more general application, though, the values would
+be dynamically calculated.
+
+@<Global...@>=
+static const unsigned WIDTH = 320;
+static const unsigned HEIGHT = 200;
+static const unsigned CURSOR_WIDTH = 100;
+static const unsigned CURSOR_HEIGHT = 59;
+static const int32_t CURSOR_HOT_SPOT_X = 10;
+static const int32_t CURSOR_HOT_SPOT_Y = 35;
+
+@ @<Global...@>=
+static bool done = false;
+
+@ This is the button callback. Whenever a button is clicked, we set the done
+flag to true, which will allow us to leave the event loop in the |main| function.
+
+@<Set callback function for mouse click@>=
+void on_button(uint32_t button)
+{
+    done = true;
+}
+
 @* Protocol details.
 
 @d min(a, b) ((a) < (b) ? (a) : (b))
@@ -93,7 +110,12 @@ struct wl_shm *shm;
 static const struct wl_registry_listener registry_listener;
 static const struct wl_pointer_listener pointer_listener;
 
-@ @<Global variables@>=
+@ The |display| object is the most important. It represents the connection
+to the display server and is
+used for sending requests and receiving events. It is used in the code for
+running the main loop.
+
+@<Global variables@>=
 struct wl_display *display;
 
 @ |wl_display_connect| connects to wayland server.
