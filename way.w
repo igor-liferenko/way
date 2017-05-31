@@ -36,7 +36,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    pool = hello_create_memory_pool(image);
+    @<Initialize memory pool from image@>;
     @<Create surface@>;
     buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
     hello_bind_buffer(buffer, shell_surface);
@@ -53,9 +53,9 @@ int main(void)
 
     fprintf(stderr, "Exiting sample wayland client...\n");
 
-    hello_free_cursor();
+    @<Free cursor@>;
     hello_free_buffer(buffer);
-    hello_free_surface(shell_surface);
+    @<Free surface@>;
     hello_free_memory_pool(pool);
     close(image);
     @<Cleanup wayland@>;
@@ -195,47 +195,40 @@ struct pool_data {
     unsigned size;
 };
 
-@ @<Head...@>=
-struct wl_shm_pool *hello_create_memory_pool(int file);
-@ @c
-struct wl_shm_pool *hello_create_memory_pool(int file)
-{
-    struct pool_data *data;
-    struct wl_shm_pool *pool;
-    struct stat stat;
+@ @<Initialize memory...@>=
+struct pool_data *data_of_pool;
+struct stat stat;
 
-    if (fstat(file, &stat) != 0)
-        return NULL;
+if (fstat(image, &stat) != 0)
+  pool = NULL;
+else {
+  data_of_pool = malloc(sizeof(struct pool_data));
+  if (data_of_pool == NULL)
+      pool = NULL;
+  else {
+    data_of_pool->capacity = stat.st_size;
+    data_of_pool->size = 0;
+    data_of_pool->fd = image;
 
-    data = malloc(sizeof(struct pool_data));
+    data_of_pool->memory = mmap(0, data_of_pool->capacity,
+        PROT_READ, MAP_SHARED, data_of_pool->fd, 0);
 
-    if (data == NULL)
-        return NULL;
+    if (data_of_pool->memory == MAP_FAILED) {
+      free(data_of_pool);
+      pool = NULL;
+    }
+    else {
+      pool = wl_shm_create_pool(shm, data_of_pool->fd, data_of_pool->capacity);
 
-    data->capacity = stat.st_size;
-    data->size = 0;
-    data->fd = file;
-
-    data->memory = mmap(0, data->capacity,
-        PROT_READ, MAP_SHARED, data->fd, 0);
-
-    if (data->memory == MAP_FAILED)
-        goto cleanup_alloc;
-
-    pool = wl_shm_create_pool(shm, data->fd, data->capacity);
-
-    if (pool == NULL)
-        goto cleanup_mmap;
-
-    wl_shm_pool_set_user_data(pool, data);
-
-    return pool;
-
-cleanup_mmap:
-    munmap(data->memory, data->capacity);
-cleanup_alloc:
-    free(data);
-    return NULL;
+      if (pool == NULL) {
+          munmap(data_of_pool->memory, data_of_pool->capacity);
+          free(data_of_pool);
+          pool = NULL;
+      }
+      else
+        wl_shm_pool_set_user_data(pool, data_of_pool);
+    }
+  }
 }
 
 @ @<Head...@>=
@@ -323,17 +316,11 @@ else {
     wl_surface_set_user_data(surface, NULL);
   }
 }
-@ @<Head...@>=
-void hello_free_surface(struct wl_shell_surface *shell_surface);
-@ @c
-void hello_free_surface(struct wl_shell_surface *shell_surface)
-{
-    struct wl_surface *surface;
 
-    surface = wl_shell_surface_get_user_data(shell_surface);
-    wl_shell_surface_destroy(shell_surface);
-    wl_surface_destroy(surface);
-}
+@ @<Free surface@>=
+surface = wl_shell_surface_get_user_data(shell_surface);
+wl_shell_surface_destroy(shell_surface);
+wl_surface_destroy(surface);
 
 @ @<Head...@>=
 void hello_bind_buffer(struct wl_buffer *buffer,
@@ -402,19 +389,13 @@ error:
     perror("Unable to allocate cursor");
 }
 
-@ @<Head...@>=
-void hello_free_cursor(void);
-@ @c
-void hello_free_cursor(void)
-{
-    struct pointer_data *data;
-
-    data = wl_pointer_get_user_data(pointer);
-    wl_buffer_destroy(data->buffer);
-    wl_surface_destroy(data->surface);
-    free(data);
-    wl_pointer_set_user_data(pointer, NULL);
-}
+@ @<Free cursor@>=
+struct pointer_data *data_of_pointer;
+data_of_pointer = wl_pointer_get_user_data(pointer);
+wl_buffer_destroy(data_of_pointer->buffer);
+wl_surface_destroy(data_of_pointer->surface);
+free(data_of_pointer);
+wl_pointer_set_user_data(pointer, NULL);
 
 @ @<Head...@>=
 static void pointer_enter(void *data,
