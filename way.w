@@ -1,4 +1,7 @@
-@ @c
+\nosecs
+@* Main program.
+
+@c
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,6 +10,7 @@
 #include <wayland-client.h>
 
 @<Header files@>;
+@<Global...@>;
 @<Struct...@>;
 
 static const unsigned WIDTH = 320;
@@ -30,7 +34,7 @@ int main(void)
     struct wl_shell_surface *surface;
     int image;
 
-    hello_setup_wayland();
+    @<Setup wayland@>;
 
     image = open("images.bin", O_RDWR);
 
@@ -61,12 +65,14 @@ int main(void)
     hello_free_surface(surface);
     hello_free_memory_pool(pool);
     close(image);
-    hello_cleanup_wayland();
+    @<Cleanup wayland@>;
 
     return EXIT_SUCCESS;
 }
 
-@ @d min(a, b) ((a) < (b) ? (a) : (b))
+@* Protocol details.
+
+@d min(a, b) ((a) < (b) ? (a) : (b))
 @d max(a, b) ((a) > (b) ? (a) : (b))
 
 @<Head...@>=
@@ -79,7 +85,6 @@ int main(void)
 @ @<Struct...@>=
 typedef uint32_t pixel;
 struct wl_compositor *compositor;
-struct wl_display *display;
 struct wl_pointer *pointer;
 struct wl_seat *seat;
 struct wl_shell *shell;
@@ -88,38 +93,39 @@ struct wl_shm *shm;
 static const struct wl_registry_listener registry_listener;
 static const struct wl_pointer_listener pointer_listener;
 
-@ @<Head...@>=
-void hello_setup_wayland(void);
-@ @c
-void hello_setup_wayland(void)
-{
-    struct wl_registry *registry;
+@ @<Global variables@>=
+struct wl_display *display;
 
-    display = wl_display_connect(NULL);
-    if (display == NULL) {
-        perror("Error opening display");
-        exit(EXIT_FAILURE);
-    }
+@ |wl_display_connect| connects to wayland server.
 
-    registry = wl_display_get_registry(display);
-    wl_registry_add_listener(registry, &registry_listener,
-        NULL);
-    wl_display_roundtrip(display);
-    wl_registry_destroy(registry);
+The server has control of a number of objects. In Wayland, these are quite
+high-level, such as a DRM manager, a compositor, a text input manager and so on.
+These objects are accessible through a {\sl registry}.
+
+@<Setup wayland@>=
+struct wl_registry *registry;
+
+display = wl_display_connect(NULL);
+if (display == NULL) {
+    perror("Error opening display");
+    exit(EXIT_FAILURE);
 }
 
-@ @<Head...@>=
-void hello_cleanup_wayland(void);
-@ @c
-void hello_cleanup_wayland(void)
-{
-    wl_pointer_destroy(pointer);
-    wl_seat_destroy(seat);
-    wl_shell_destroy(shell);
-    wl_shm_destroy(shm);
-    wl_compositor_destroy(compositor);
-    wl_display_disconnect(display);
-}
+registry = wl_display_get_registry(display);
+wl_registry_add_listener(registry, &registry_listener,
+    NULL);
+wl_display_roundtrip(display);
+wl_registry_destroy(registry);
+
+@ |wc_display_disconnect| disconnects from wayland server.
+
+@<Cleanup wayland@>=
+wl_pointer_destroy(pointer);
+wl_seat_destroy(seat);
+wl_shell_destroy(shell);
+wl_shm_destroy(shm);
+wl_compositor_destroy(compositor);
+wl_display_disconnect(display);
 
 @ @<Head...@>=
 static void registry_global(void *data,
