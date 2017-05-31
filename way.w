@@ -23,8 +23,8 @@ input from the pointer device, closing the application when clicked.
 int main(void)
 {
     struct wl_buffer *buffer;
+    struct wl_surface *surface;
     struct wl_shm_pool *pool;
-    struct wl_shell_surface *surface;
     int image;
 
     @<Setup wayland@>;
@@ -37,12 +37,12 @@ int main(void)
     }
 
     pool = hello_create_memory_pool(image);
-    surface = hello_create_surface();
+    @<Create surface@>;
     buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
-    hello_bind_buffer(buffer, surface);
+    hello_bind_buffer(buffer, shell_surface);
     hello_set_cursor_from_pool(pool, CURSOR_WIDTH,
         CURSOR_HEIGHT, CURSOR_HOT_SPOT_X, CURSOR_HOT_SPOT_Y);
-    hello_set_button_callback(surface, on_button);
+    @<Set button callback@>;
 
     while (!done) {
         if (wl_display_dispatch(display) < 0) {
@@ -55,7 +55,7 @@ int main(void)
 
     hello_free_cursor();
     hello_free_buffer(buffer);
-    hello_free_surface(surface);
+    hello_free_surface(shell_surface);
     hello_free_memory_pool(pool);
     close(image);
     @<Cleanup wayland@>;
@@ -86,6 +86,9 @@ void on_button(uint32_t button)
 {
     done = true;
 }
+
+@ @<Global...@>=
+struct wl_shell_surface *shell_surface;
 
 @* Protocol details.
 
@@ -304,35 +307,22 @@ static const struct wl_shell_surface_listener
     .configure = shell_surface_configure,
 };
 
-@ @<Head...@>=
-struct wl_shell_surface *hello_create_surface(void);
-@ @c
-struct wl_shell_surface *hello_create_surface(void)
-{
-    struct wl_surface *surface;
-    struct wl_shell_surface *shell_surface;
+@ @<Create surface@>=
+surface = wl_compositor_create_surface(compositor);
+if (surface == NULL) shell_surface = NULL;
+else {
+  shell_surface = wl_shell_get_shell_surface(shell, surface);
 
-    surface = wl_compositor_create_surface(compositor);
-
-    if (surface == NULL)
-        return NULL;
-
-    shell_surface = wl_shell_get_shell_surface(shell, surface);
-
-    if (shell_surface == NULL) {
-        wl_surface_destroy(surface);
-        return NULL;
-    }
-
+  if (shell_surface == NULL)
+    wl_surface_destroy(surface);
+  else {
     wl_shell_surface_add_listener(shell_surface,
         &shell_surface_listener, 0);
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_user_data(shell_surface, surface);
     wl_surface_set_user_data(surface, NULL);
-
-    return shell_surface;
+  }
 }
-
 @ @<Head...@>=
 void hello_free_surface(struct wl_shell_surface *shell_surface);
 @ @c
@@ -359,20 +349,9 @@ void hello_bind_buffer(struct wl_buffer *buffer,
     wl_surface_commit(surface);
 }
 
-@ @<Head...@>=
-void hello_set_button_callback(
-    struct wl_shell_surface *shell_surface,
-    void (*callback)(uint32_t));
-@ @c
-void hello_set_button_callback(
-    struct wl_shell_surface *shell_surface,
-    void (*callback)(uint32_t))
-{
-    struct wl_surface* surface;
-
-    surface = wl_shell_surface_get_user_data(shell_surface);
-    wl_surface_set_user_data(surface, callback);
-}
+@ @<Set button callback@>=
+surface = wl_shell_surface_get_user_data(shell_surface);
+wl_surface_set_user_data(surface, on_button);
 
 @ @<Structures@>=
 struct pointer_data {
