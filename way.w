@@ -25,6 +25,8 @@ int main(void)
     struct wl_buffer *buffer;
     struct wl_surface *surface;
     struct wl_shm_pool *pool;
+    struct pool_data *data_of_pool;
+    struct pointer_data *data_of_pointer;
     int image;
 
     @<Setup wayland@>;
@@ -39,9 +41,8 @@ int main(void)
     @<Initialize memory pool from image@>;
     @<Create surface@>;
     buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
-    hello_bind_buffer(buffer, shell_surface);
-    hello_set_cursor_from_pool(pool, CURSOR_WIDTH,
-        CURSOR_HEIGHT, CURSOR_HOT_SPOT_X, CURSOR_HOT_SPOT_Y);
+    @<Bind buffer@>;
+    @<Set cursor from pool@>;
     @<Set button callback@>;
 
     while (!done) {
@@ -54,9 +55,9 @@ int main(void)
     fprintf(stderr, "Exiting sample wayland client...\n");
 
     @<Free cursor@>;
-    hello_free_buffer(buffer);
+    @<Free buffer@>;
     @<Free surface@>;
-    hello_free_memory_pool(pool);
+    @<Free memory pool@>;
     close(image);
     @<Cleanup wayland@>;
 
@@ -196,7 +197,6 @@ struct pool_data {
 };
 
 @ @<Initialize memory...@>=
-struct pool_data *data_of_pool;
 struct stat stat;
 
 if (fstat(image, &stat) != 0)
@@ -231,18 +231,11 @@ else {
   }
 }
 
-@ @<Head...@>=
-void hello_free_memory_pool(struct wl_shm_pool *pool);
-@ @c
-void hello_free_memory_pool(struct wl_shm_pool *pool)
-{
-    struct pool_data *data;
-
-    data = wl_shm_pool_get_user_data(pool);
-    wl_shm_pool_destroy(pool);
-    munmap(data->memory, data->capacity);
-    free(data);
-}
+@ @<Free memory pool@>=
+data_of_pool = wl_shm_pool_get_user_data(pool);
+wl_shm_pool_destroy(pool);
+munmap(data_of_pool->memory, data_of_pool->capacity);
+free(data_of_pool);
 
 @ @<Struct...@>=
 static const uint32_t PIXEL_FORMAT_ID = WL_SHM_FORMAT_ARGB8888;
@@ -270,13 +263,8 @@ struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
     return buffer;
 }
 
-@ @<Head...@>=
-void hello_free_buffer(struct wl_buffer *buffer);
-@ @c
-void hello_free_buffer(struct wl_buffer *buffer)
-{
-    wl_buffer_destroy(buffer);
-}
+@ @<Free buffer@>=
+wl_buffer_destroy(buffer);
 
 @ @<Head...@>=
 static void shell_surface_ping(void *data,
@@ -322,19 +310,10 @@ surface = wl_shell_surface_get_user_data(shell_surface);
 wl_shell_surface_destroy(shell_surface);
 wl_surface_destroy(surface);
 
-@ @<Head...@>=
-void hello_bind_buffer(struct wl_buffer *buffer,
-    struct wl_shell_surface *shell_surface);
-@ @c
-void hello_bind_buffer(struct wl_buffer *buffer,
-    struct wl_shell_surface *shell_surface)
-{
-    struct wl_surface *surface;
-
-    surface = wl_shell_surface_get_user_data(shell_surface);
-    wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_commit(surface);
-}
+@ @<Bind buffer@>=
+surface = wl_shell_surface_get_user_data(shell_surface);
+wl_surface_attach(surface, buffer, 0, 0);
+wl_surface_commit(surface);
 
 @ @<Set button callback@>=
 surface = wl_shell_surface_get_user_data(shell_surface);
@@ -349,48 +328,34 @@ struct pointer_data {
     struct wl_surface *target_surface;
 };
 
-@ @<Head...@>=
-void hello_set_cursor_from_pool(struct wl_shm_pool *pool,
-    unsigned width, unsigned height,
-    int32_t hot_spot_x, int32_t hot_spot_y);
-@ @c
-void hello_set_cursor_from_pool(struct wl_shm_pool *pool,
-    unsigned width, unsigned height,
-    int32_t hot_spot_x, int32_t hot_spot_y)
-{
-    struct pointer_data *data;
+@ @<Set cursor from pool@>=
+data_of_pointer = malloc(sizeof(struct pointer_data));
 
-    data = malloc(sizeof(struct pointer_data));
+if (data_of_pointer == NULL)
+  fprintf(stderr,"Unable to allocate cursor\n");
+else {
+  data_of_pointer->hot_spot_x = CURSOR_HOT_SPOT_X;
+  data_of_pointer->hot_spot_y = CURSOR_HOT_SPOT_Y;
+  data_of_pointer->surface = wl_compositor_create_surface(compositor);
 
-    if (data == NULL)
-        goto error;
+  if (data_of_pointer->surface == NULL) {
+    free(data_of_pointer);
+    fprintf(stderr,"Unable to allocate cursor\n");    
+  }
+  else {
+    data_of_pointer->buffer = hello_create_buffer(pool, CURSOR_WIDTH, CURSOR_HEIGHT);
 
-    data->hot_spot_x = hot_spot_x;
-    data->hot_spot_y = hot_spot_y;
-    data->surface = wl_compositor_create_surface(compositor);
-
-    if (data->surface == NULL)
-        goto cleanup_alloc;
-
-    data->buffer = hello_create_buffer(pool, width, height);
-
-    if (data->buffer == NULL)
-        goto cleanup_surface;
-
-    wl_pointer_set_user_data(pointer, data);
-
-    return;
-
-cleanup_surface:
-    wl_surface_destroy(data->surface);
-cleanup_alloc:
-    free(data);
-error:
-    perror("Unable to allocate cursor");
+    if (data_of_pointer->buffer == NULL) {
+      wl_surface_destroy(data_of_pointer->surface);
+      free(data_of_pointer);
+      fprintf(stderr, "Unable to allocate cursor\n");
+    }
+    else
+      wl_pointer_set_user_data(pointer, data_of_pointer);
+  }
 }
 
 @ @<Free cursor@>=
-struct pointer_data *data_of_pointer;
 data_of_pointer = wl_pointer_get_user_data(pointer);
 wl_buffer_destroy(data_of_pointer->buffer);
 wl_surface_destroy(data_of_pointer->surface);
