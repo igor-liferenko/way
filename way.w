@@ -1,5 +1,8 @@
-\nosecs
+\let\lheader\rheader
+\datethis
+
 @s int32_t int
+
 @* Main program.
 
 Here we discribe the complete set of steps necessary to communicate
