@@ -27,16 +27,13 @@ int main(void)
     struct wl_shm_pool *pool;
     struct pool_data *data_of_pool;
     struct pointer_data *data_of_pointer;
+    struct wl_shell_surface *shell_surface;
+
     int image;
 
     @<Setup wayland@>;
 
-    image = open("images.bin", O_RDWR);
-
-    if (image < 0) {
-        perror("Error opening surface image");
-        return EXIT_FAILURE;
-    }
+    @<Open image file@>;
 
     @<Initialize memory pool from image@>;
     @<Create surface@>;
@@ -45,12 +42,7 @@ int main(void)
     @<Set cursor from pool@>;
     @<Set button callback@>;
 
-    while (!done) {
-        if (wl_display_dispatch(display) < 0) {
-            perror("Main loop error");
-            done = true;
-        }
-    }
+    @<Main loop@>;
 
     fprintf(stderr, "Exiting sample wayland client...\n");
 
@@ -88,8 +80,28 @@ void on_button(uint32_t button)
     done = true;
 }
 
-@ @<Global...@>=
-struct wl_shell_surface *shell_surface;
+@ This image file contains the hardcoded images for this program, already in a raw format
+for display: it's the pixel values for the main window, followed by the pixel values
+for the cursor.
+
+@<Open image file@>=
+image = open("images.bin", O_RDWR);
+if (image < 0) {
+    perror("Error opening surface image");
+    return EXIT_FAILURE;
+}
+
+@ This calls the main loop with the global |display| object. The main
+loop exits when the done flag is true, either because of an error, or
+because the button was clicked.
+
+@<Main loop@>=
+while (!done) {
+    if (wl_display_dispatch(display) < 0) {
+        perror("Main loop error");
+        done = true;
+    }
+}
 
 @* Protocol details.
 
@@ -127,6 +139,9 @@ struct wl_display *display;
 The server has control of a number of objects. In Wayland, these are quite
 high-level, such as a DRM manager, a compositor, a text input manager and so on.
 These objects are accessible through a {\sl registry}.
+
+We begin the application by connecting to the display server and requesting a
+collection of global objects from the server, filling in proxy variables representing them.
 
 @<Setup wayland@>=
 struct wl_registry *registry;
@@ -196,7 +211,25 @@ struct pool_data {
     unsigned size;
 };
 
-@ @<Initialize memory...@>=
+@ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
+accomplishes that by sharing memory areas between the client applications and the display
+server, so that no copies are involved. The essential element that is shared between client
+and server is called a shared memory pool, which is simply a memory area mmapped in both
+client and servers. Inside a memory pool, a set of images can be appended as buffer objects
+and all will be shared both by client and server.
+
+In this program we |mmap| our hardcoded image file. In a typical application, however, an
+empty memory pool would be created, for example, by creating a shared memory object with
+|shm_open|, then gradually filled with dynamically constructed image buffers representing
+the widgets. While writing this program, the author had to decide if he would create an
+empty memory pool and allocate buffers inside it, which is more usual and simpler to
+understand, or if he would use a less intuitive example of creating a pre built memory
+pool. He decided to go with the less intuitive example for an important reason: if you
+read the whole program, you'll notice that there's no memory copy operation anywhere. The
+image file is open once, and |mmap|ped once. No extra copy is required. This was done to
+make clear that a wayland application can have maximal efficiency if carefully implemented.
+
+@<Initialize memory...@>=
 struct stat stat;
 
 if (fstat(image, &stat) != 0)
@@ -240,7 +273,13 @@ free(data_of_pool);
 @ @<Struct...@>=
 static const uint32_t PIXEL_FORMAT_ID = WL_SHM_FORMAT_ARGB8888;
 
-@ @<Head...@>=
+@ The buffer object has the contents of a surface. Buffers are created inside of a
+memory pool (they are memory pool slices), so that they are shared by the client and
+the server. In our example, we do not create an empty buffer, instead we rely on the
+fact that the memory pool was previously filled with data and just pass the image
+dimensions as a parameter.
+
+@<Head...@>=
 struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
     unsigned width, unsigned height);
 @ @c
@@ -288,7 +327,13 @@ static const struct wl_shell_surface_listener
     .configure = shell_surface_configure,
 };
 
-@ @<Create surface@>=
+@ Objects representing visible elements are called surfaces. Surfaces are rectangular
+areas, having position and size. Surface contents are filled by using buffer objects.
+During the lifetime of a surface, a couple of buffers will be attached as the surface
+contents and the server will be requested to redraw the surfaces. In this program, the
+surface object is of type |wl_shell_surface|, which is used for creating top level windows.
+
+@<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
 if (surface == NULL) shell_surface = NULL;
 else {
@@ -310,12 +355,24 @@ surface = wl_shell_surface_get_user_data(shell_surface);
 wl_shell_surface_destroy(shell_surface);
 wl_surface_destroy(surface);
 
-@ @<Bind buffer@>=
+@ To make the buffer visible we need to bind buffer data to a surface, that is, we
+set the surface contents to the buffer data. The bind operation also commits the
+surface to the server. In wayland there's an idea of surface ownership: either the client
+owns the surface, so that it can be drawn (and the server keeps an old copy of it), or
+the server owns the surface, when the client can't change it because the server is
+drawing it on the screen. For transfering the ownership to the server, there's the
+commit request and for sending the ownership back to the client, the server sends a
+release event. In a generic application, the surface will be moved back and forth, but
+in this program it's enough to commit only once, as part of the bind operation.
+
+@<Bind buffer@>=
 surface = wl_shell_surface_get_user_data(shell_surface);
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
 
-@ @<Set button callback@>=
+@ Set up a callback: associate a surface click with the |on_button| callback.
+
+@<Set button callback@>=
 surface = wl_shell_surface_get_user_data(shell_surface);
 wl_surface_set_user_data(surface, on_button);
 
@@ -328,7 +385,15 @@ struct pointer_data {
     struct wl_surface *target_surface;
 };
 
-@ @<Set cursor from pool@>=
+@ After setting up the main window, we configure the cursor. This configuration is required:
+the client must configure the cursor. Here we set the cursor to be the preset contents
+of the memory pool (implicitly right after the main window buffer). The helper module
+then creates a surface and a buffer for the cursor. I had to decide if I would hide the
+cursor configuration in the helper module or if I would explicitly add a high level step
+for it. I dedided to go with the second one to show the division of roles in wayland: the
+client is given a large control over what and how to draw.
+
+@<Set cursor from pool@>=
 data_of_pointer = malloc(sizeof(struct pointer_data));
 
 if (data_of_pointer == NULL)
