@@ -494,3 +494,5 @@ static const struct wl_pointer_listener pointer_listener = {
     .button = pointer_button,
     .axis = pointer_axis
 };
+
+@* Index.
