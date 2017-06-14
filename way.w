@@ -10,7 +10,7 @@ with the display server to display the hello world window.
 
 @c
 @<Header files@>;
-
+@<Predeclarations of procedures@>;
 @<Struct...@>;
 @<Global...@>;
 
@@ -22,8 +22,6 @@ struct wl_shm_pool *pool;
 struct pool_data *data_of_pool;
 
 @ @c
-@<Set callback function for mouse click@>;
-
 int main(void)
 {
     @<Setup wayland@>;
@@ -31,11 +29,11 @@ int main(void)
     @<Initialize memory pool from image@>;
     @<Create surface@>;
     @<Bind buffer@>;
-    @<Set button callback@>;
 
-    @<Main loop@>;
-
-    fprintf(stderr, "Exiting sample wayland client...\n");
+    @<Draw first image@>;
+    sleep(5);
+    @<Draw second image@>;
+    sleep(5);
 
     @<Free buffer@>;
     @<Free surface@>;
@@ -53,18 +51,6 @@ Its geometry is hardcoded.
 static const unsigned WIDTH = 320;
 static const unsigned HEIGHT = 200;
 
-@ @<Global...@>=
-static bool done = false;
-
-@ This is the button callback. Whenever a button is clicked, we set the done
-flag to true, which will allow us to leave the event loop in the |main| function.
-
-@<Set callback function for mouse click@>=
-void on_button(uint32_t button)
-{
-    done = true;
-}
-
 @ This image file contains the hardcoded images for this program, already in a raw format
 for display: it's the pixel values for the main window.
 
@@ -80,13 +66,13 @@ if (image < 0) {
 loop exits when the done flag is true, either because of an error, or
 because the button was clicked.
 
-@<Main loop@>=
-while (!done) {
-    if (wl_display_dispatch(display) < 0) {
-        perror("Main loop error");
-        done = true;
-    }
-}
+@<Draw first image@>=
+if (wl_display_dispatch(display) < 0)
+    fprintf(stderr, "draw one error\n");
+
+@ @<Draw second image@>=
+if (wl_display_dispatch(display) < 0)
+    fprintf(stderr, "draw two error\n");
 
 @* Protocol details.
 
@@ -99,8 +85,6 @@ struct wl_compositor *compositor;
 struct wl_seat *seat;
 struct wl_shell *shell;
 struct wl_shm *shm;
-
-static const struct wl_registry_listener registry_listener;
 
 @ The |display| object is the most important. It represents the connection
 to the display server and is
@@ -141,8 +125,13 @@ wl_shm_destroy(shm);
 wl_compositor_destroy(compositor);
 wl_display_disconnect(display);
 
+@ @<Predecl...@>=
+void registry_global(void *data,
+    struct wl_registry *registry, uint32_t name,
+    const char *interface, uint32_t version);
+
 @ @c
-static void registry_global(void *data,
+void registry_global(void *data,
     struct wl_registry *registry, uint32_t name,
     const char *interface, uint32_t version)
 {
@@ -245,6 +234,10 @@ the server. In our example, we do not create an empty buffer, instead we rely on
 fact that the memory pool was previously filled with data and just pass the image
 dimensions as a parameter.
 
+@<Predecl...@>=
+struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
+    unsigned width, unsigned height);
+
 @ @c
 struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
     unsigned width, unsigned height)
@@ -297,7 +290,6 @@ else {
 }
 
 @ @<Free surface@>=
-surface = wl_shell_surface_get_user_data(shell_surface);
 wl_shell_surface_destroy(shell_surface);
 wl_surface_destroy(surface);
 
@@ -317,12 +309,6 @@ surface = wl_shell_surface_get_user_data(shell_surface);
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
 
-@ Set up a callback: associate a surface click with the |on_button| callback.
-
-@<Set button callback@>=
-surface = wl_shell_surface_get_user_data(shell_surface);
-wl_surface_set_user_data(surface, on_button);
-
 @ @<Head...@>=
 #include <stdio.h>
 #include <stdlib.h>
@@ -335,10 +321,5 @@ wl_surface_set_user_data(surface, on_button);
 #include <stdlib.h>
 #include <unistd.h>
 #include <wayland-client.h>
-static void registry_global(void *data,
-    struct wl_registry *registry, uint32_t name,
-    const char *interface, uint32_t version);
-struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
-    unsigned width, unsigned height);
 
 @* Index.
