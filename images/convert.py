@@ -15,11 +15,10 @@ def write(i, o, X, Y):
             p = pre(i.getpixel((x, y)))
             o.write(pack('4B', p[2], p[1], p[0], p[3]))
 
-
-i = Image.open('images/fish.png')
-with open('fish.bin', 'wb') as o:
-    write(i, o, 100, 59)
-
 i = Image.open('images/window.png')
 with open('window.bin', 'wb') as o:
+    write(i, o, 320, 200)
+
+i = Image.open('images/window2.png')
+with open('window2.bin', 'wb') as o:
     write(i, o, 320, 200)

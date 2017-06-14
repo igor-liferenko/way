@@ -27,26 +27,13 @@ int main(void)
 }
 
 @ In this program we display an image as the main window.
-Its geometry is hardcoded.
+Its geometry is hardcoded. This image file contains the hardcoded image
+for this program, already in a raw format
+for display: it's the pixel values for the main window.
 
 @<Global...@>=
 static const unsigned WIDTH = 320;
 static const unsigned HEIGHT = 200;
-
-@ This image file contains the hardcoded images for this program, already in a raw format
-for display: it's the pixel values for the main window.
-
-@ This calls the main loop with the global |display| object. The main
-loop exits when the done flag is true, either because of an error, or
-because the button was clicked.
-
-@<Draw first image@>=
-if (wl_display_dispatch(display) < 0)
-    fprintf(stderr, "draw one error\n");
-
-@ @<Draw second image@>=
-if (wl_display_dispatch(display) < 0)
-    fprintf(stderr, "draw two error\n");
 
 @* Protocol details.
 
@@ -148,9 +135,6 @@ pool. He decided to go with the less intuitive example for an important reason: 
 read the whole program, you'll notice that there's no memory copy operation anywhere. The
 image file is open once, and |mmap|ped once. No extra copy is required. This was done to
 make clear that a wayland application can have maximal efficiency if carefully implemented.
-
-@ @<Struct...@>=
-static const uint32_t PIXEL_FORMAT_ID = WL_SHM_FORMAT_ARGB8888;
 
 @ The buffer object has the contents of a surface. Buffers are created inside of a
 memory pool (they are memory pool slices), so that they are shared by the client and
