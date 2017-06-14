@@ -6,50 +6,37 @@
 @* Main program.
 
 Here we discribe the complete set of steps necessary to communicate
-with the display server to display the hello world window and accept
-input from the pointer device, closing the application when clicked.
+with the display server to display the hello world window.
 
 @c
-#include <fcntl.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <wayland-client.h>
-
 @<Header files@>;
-@<Global...@>;
-@<Struct...@>;
 
+@<Struct...@>;
+@<Global...@>;
+
+@ @<Global...@>=
+struct wl_buffer *buffer;
+struct wl_surface *surface;
+struct wl_shell_surface *shell_surface;
+struct wl_shm_pool *pool;
+struct pool_data *data_of_pool;
+
+@ @c
 @<Set callback function for mouse click@>;
 
 int main(void)
 {
-    struct wl_buffer *buffer;
-    struct wl_surface *surface;
-    struct wl_shm_pool *pool;
-    struct pool_data *data_of_pool;
-    struct pointer_data *data_of_pointer;
-    struct wl_shell_surface *shell_surface;
-
-    int image;
-
     @<Setup wayland@>;
-
     @<Open image file@>;
-
     @<Initialize memory pool from image@>;
     @<Create surface@>;
-    buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
     @<Bind buffer@>;
-    @<Set cursor from pool@>;
     @<Set button callback@>;
 
     @<Main loop@>;
 
     fprintf(stderr, "Exiting sample wayland client...\n");
 
-    @<Free cursor@>;
     @<Free buffer@>;
     @<Free surface@>;
     @<Free memory pool@>;
@@ -59,17 +46,12 @@ int main(void)
     return EXIT_SUCCESS;
 }
 
-@ In this program we display an image as the main window and another for the cursor.
-Their geometry is hardcoded. In a more general application, though, the values would
-be dynamically calculated.
+@ In this program we display an image as the main window.
+Its geometry is hardcoded.
 
 @<Global...@>=
 static const unsigned WIDTH = 320;
 static const unsigned HEIGHT = 200;
-static const unsigned CURSOR_WIDTH = 100;
-static const unsigned CURSOR_HEIGHT = 59;
-static const int32_t CURSOR_HOT_SPOT_X = 10;
-static const int32_t CURSOR_HOT_SPOT_Y = 35;
 
 @ @<Global...@>=
 static bool done = false;
@@ -84,10 +66,10 @@ void on_button(uint32_t button)
 }
 
 @ This image file contains the hardcoded images for this program, already in a raw format
-for display: it's the pixel values for the main window, followed by the pixel values
-for the cursor.
+for display: it's the pixel values for the main window.
 
 @<Open image file@>=
+int image;
 image = open("images.bin", O_RDWR);
 if (image < 0) {
     perror("Error opening surface image");
@@ -111,23 +93,14 @@ while (!done) {
 @d min(a, b) ((a) < (b) ? (a) : (b))
 @d max(a, b) ((a) > (b) ? (a) : (b))
 
-@<Head...@>=
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-
 @ @<Struct...@>=
 typedef uint32_t pixel;
 struct wl_compositor *compositor;
-struct wl_pointer *pointer;
 struct wl_seat *seat;
 struct wl_shell *shell;
 struct wl_shm *shm;
 
 static const struct wl_registry_listener registry_listener;
-static const struct wl_pointer_listener pointer_listener;
 
 @ The |display| object is the most important. It represents the connection
 to the display server and is
@@ -148,7 +121,6 @@ collection of global objects from the server, filling in proxy variables represe
 
 @<Setup wayland@>=
 struct wl_registry *registry;
-
 display = wl_display_connect(NULL);
 if (display == NULL) {
     perror("Error opening display");
@@ -156,25 +128,19 @@ if (display == NULL) {
 }
 
 registry = wl_display_get_registry(display);
-wl_registry_add_listener(registry, &registry_listener,
-    NULL);
+wl_registry_add_listener(registry, &registry_listener, NULL);
 wl_display_roundtrip(display);
 wl_registry_destroy(registry);
 
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
-wl_pointer_destroy(pointer);
 wl_seat_destroy(seat);
 wl_shell_destroy(shell);
 wl_shm_destroy(shm);
 wl_compositor_destroy(compositor);
 wl_display_disconnect(display);
 
-@ @<Head...@>=
-static void registry_global(void *data,
-    struct wl_registry *registry, uint32_t name,
-    const char *interface, uint32_t version);
 @ @c
 static void registry_global(void *data,
     struct wl_registry *registry, uint32_t name,
@@ -192,9 +158,6 @@ static void registry_global(void *data,
     else if (strcmp(interface, wl_seat_interface.name) == 0) {
         seat = wl_registry_bind(registry, name,
             &wl_seat_interface, min(version, 2));
-        pointer = wl_seat_get_pointer(seat);
-        wl_pointer_add_listener(pointer, &pointer_listener,
-            NULL);
     }
 }
 
@@ -282,9 +245,6 @@ the server. In our example, we do not create an empty buffer, instead we rely on
 fact that the memory pool was previously filled with data and just pass the image
 dimensions as a parameter.
 
-@<Head...@>=
-struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
-    unsigned width, unsigned height);
 @ @c
 struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
     unsigned width, unsigned height)
@@ -308,20 +268,12 @@ struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
 @ @<Free buffer@>=
 wl_buffer_destroy(buffer);
 
-@ @<Head...@>=
-static void shell_surface_ping(void *data,
-    struct wl_shell_surface *shell_surface, uint32_t serial);
 @ @c
 static void shell_surface_ping(void *data,
     struct wl_shell_surface *shell_surface, uint32_t serial)
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
-
-@ @<Head...@>=
-static void shell_surface_configure(void *data,
-    struct wl_shell_surface *shell_surface,
-    uint32_t edges, int32_t width, int32_t height) { }
 
 @ @<Struct...@>=
 static const struct wl_shell_surface_listener
@@ -369,6 +321,7 @@ release event. In a generic application, the surface will be moved back and fort
 in this program it's enough to commit only once, as part of the bind operation.
 
 @<Bind buffer@>=
+buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
 surface = wl_shell_surface_get_user_data(shell_surface);
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
@@ -379,120 +332,43 @@ wl_surface_commit(surface);
 surface = wl_shell_surface_get_user_data(shell_surface);
 wl_surface_set_user_data(surface, on_button);
 
-@ @<Structures@>=
-struct pointer_data {
-    struct wl_surface *surface;
-    struct wl_buffer *buffer;
-    int32_t hot_spot_x;
-    int32_t hot_spot_y;
-    struct wl_surface *target_surface;
-};
-
-@ After setting up the main window, we configure the cursor. This configuration is required:
-the client must configure the cursor. Here we set the cursor to be the preset contents
-of the memory pool (implicitly right after the main window buffer). The helper module
-then creates a surface and a buffer for the cursor. I had to decide if I would hide the
-cursor configuration in the helper module or if I would explicitly add a high level step
-for it. I dedided to go with the second one to show the division of roles in wayland: the
-client is given a large control over what and how to draw.
-
-@<Set cursor from pool@>=
-data_of_pointer = malloc(sizeof(struct pointer_data));
-
-if (data_of_pointer == NULL)
-  fprintf(stderr,"Unable to allocate cursor\n");
-else {
-  data_of_pointer->hot_spot_x = CURSOR_HOT_SPOT_X;
-  data_of_pointer->hot_spot_y = CURSOR_HOT_SPOT_Y;
-  data_of_pointer->surface = wl_compositor_create_surface(compositor);
-
-  if (data_of_pointer->surface == NULL) {
-    free(data_of_pointer);
-    fprintf(stderr,"Unable to allocate cursor\n");    
-  }
-  else {
-    data_of_pointer->buffer = hello_create_buffer(pool, CURSOR_WIDTH, CURSOR_HEIGHT);
-
-    if (data_of_pointer->buffer == NULL) {
-      wl_surface_destroy(data_of_pointer->surface);
-      free(data_of_pointer);
-      fprintf(stderr, "Unable to allocate cursor\n");
-    }
-    else
-      wl_pointer_set_user_data(pointer, data_of_pointer);
-  }
-}
-
-@ @<Free cursor@>=
-data_of_pointer = wl_pointer_get_user_data(pointer);
-wl_buffer_destroy(data_of_pointer->buffer);
-wl_surface_destroy(data_of_pointer->surface);
-free(data_of_pointer);
-wl_pointer_set_user_data(pointer, NULL);
-
 @ @<Head...@>=
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <wayland-client.h>
+static void registry_global(void *data,
+    struct wl_registry *registry, uint32_t name,
+    const char *interface, uint32_t version);
+struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
+    unsigned width, unsigned height);
+static void shell_surface_ping(void *data,
+    struct wl_shell_surface *shell_surface, uint32_t serial);
+static void shell_surface_configure(void *data,
+    struct wl_shell_surface *shell_surface,
+    uint32_t edges, int32_t width, int32_t height) { }
 static void pointer_enter(void *data,
     struct wl_pointer *wl_pointer,
     uint32_t serial, struct wl_surface *surface,
     wl_fixed_t surface_x, wl_fixed_t surface_y);
-@ @c
-static void pointer_enter(void *data,
-    struct wl_pointer *wl_pointer,
-    uint32_t serial, struct wl_surface *surface,
-    wl_fixed_t surface_x, wl_fixed_t surface_y)
-{
-    struct pointer_data *pointer_data;
-
-    pointer_data = wl_pointer_get_user_data(wl_pointer);
-    pointer_data->target_surface = surface;
-    wl_surface_attach(pointer_data->surface,
-        pointer_data->buffer, 0, 0);
-    wl_surface_commit(pointer_data->surface);
-    wl_pointer_set_cursor(wl_pointer, serial,
-        pointer_data->surface, pointer_data->hot_spot_x,
-        pointer_data->hot_spot_y);
-}
-
-@ @<Head...@>=
 static void pointer_leave(void *data,
     struct wl_pointer *wl_pointer, uint32_t serial,
     struct wl_surface *wl_surface) { }
-
 static void pointer_motion(void *data,
     struct wl_pointer *wl_pointer, uint32_t time,
     wl_fixed_t surface_x, wl_fixed_t surface_y) { }
-
-@ @<Head...@>=
 static void pointer_button(void *data,
     struct wl_pointer *wl_pointer, uint32_t serial,
     uint32_t time, uint32_t button, uint32_t state);
-@ @c
-static void pointer_button(void *data,
-    struct wl_pointer *wl_pointer, uint32_t serial,
-    uint32_t time, uint32_t button, uint32_t state)
-{
-    struct pointer_data *pointer_data;
-    void (*callback)(uint32_t);
-
-    pointer_data = wl_pointer_get_user_data(wl_pointer);
-    callback = wl_surface_get_user_data(
-        pointer_data->target_surface);
-    if (callback != NULL)
-        callback(button);
-}
-
-@ @<Head...@>=
 static void pointer_axis(void *data,
     struct wl_pointer *wl_pointer, uint32_t time,
     uint32_t axis, wl_fixed_t value) { }
-
-@ @<Struct...@>=
-static const struct wl_pointer_listener pointer_listener = {
-    .enter = pointer_enter,
-    .leave = pointer_leave,
-    .motion = pointer_motion,
-    .button = pointer_button,
-    .axis = pointer_axis
-};
 
 @* Index.
