@@ -19,9 +19,11 @@ struct wl_buffer *buffer;
 struct wl_surface *surface;
 struct wl_shell_surface *shell_surface;
 struct wl_shm_pool *pool;
-struct pool_data *data_of_pool;
+void *shm_data;
 
 @ @c
+@<Functions for shared memory@>;
+
 int main(void)
 {
     @<Setup wayland@>;
@@ -80,7 +82,7 @@ if (wl_display_dispatch(display) < 0)
 @d max(a, b) ((a) > (b) ? (a) : (b))
 
 @ @<Struct...@>=
-typedef uint32_t pixel;
+typedef uint32_t pixel_t;
 struct wl_compositor *compositor;
 struct wl_shell *shell;
 struct wl_shm *shm;
@@ -130,18 +132,22 @@ void registry_global(void *data,
 
 @ @c
 void registry_global(void *data,
-    struct wl_registry *registry, uint32_t name,
+    struct wl_registry *registry, uint32_t id,
     const char *interface, uint32_t version)
 {
-    if (strcmp(interface, wl_compositor_interface.name) == 0)
-        compositor = wl_registry_bind(registry, name,
-            &wl_compositor_interface, min(version, 4));
-    else if (strcmp(interface, wl_shm_interface.name) == 0)
-        shm = wl_registry_bind(registry, name,
-            &wl_shm_interface, min(version, 1));
-    else if (strcmp(interface, wl_shell_interface.name) == 0)
-        shell = wl_registry_bind(registry, name,
-            &wl_shell_interface, min(version, 1));
+    if (strcmp(interface, "wl_compositor") == 0) {
+        compositor = wl_registry_bind(registry, 
+				      id, 
+				      &wl_compositor_interface, 
+				      1);
+    } else if (strcmp(interface, "wl_shell") == 0) {
+        shell = wl_registry_bind(registry, id,
+                                 &wl_shell_interface, 1);
+    } else if (strcmp(interface, "wl_shm") == 0) {
+        shm = wl_registry_bind(registry, id,
+                                 &wl_shm_interface, 1);
+	wl_shm_add_listener(shm, &shm_listener, NULL);
+    }
 }
 
 @ @<Struct...@>=
@@ -153,9 +159,13 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = registry_global_remove
 };
 
+struct wl_shm_listener shm_listener = {
+	shm_format
+};
+
 struct pool_data {
     int fd;
-    pixel *memory;
+    pixel_t *memory;
     unsigned capacity;
     unsigned size;
 };
@@ -179,45 +189,28 @@ image file is open once, and |mmap|ped once. No extra copy is required. This was
 make clear that a wayland application can have maximal efficiency if carefully implemented.
 
 @<Initialize memory...@>=
-struct stat stat;
+    int size = WIDTH*HEIGHT*sizeof(pixel_t);
+    int fd;
+    struct wl_buffer *buff;
 
-if (fstat(image, &stat) != 0)
-  pool = NULL;
-else {
-  data_of_pool = malloc(sizeof(struct pool_data));
-  if (data_of_pool == NULL)
-      pool = NULL;
-  else {
-    data_of_pool->capacity = stat.st_size;
-    data_of_pool->size = 0;
-    data_of_pool->fd = image;
-
-    data_of_pool->memory = mmap(0, data_of_pool->capacity,
-        PROT_READ, MAP_SHARED, data_of_pool->fd, 0);
-
-    if (data_of_pool->memory == MAP_FAILED) {
-      free(data_of_pool);
-      pool = NULL;
+    fd = os_create_anonymous_file(size);
+    if (fd < 0) {
+	fprintf(stderr, "creating a buffer file for %d B failed: %m\n",
+		size);
+	exit(1);
     }
-    else {
-      pool = wl_shm_create_pool(shm, data_of_pool->fd, data_of_pool->capacity);
-
-      if (pool == NULL) {
-          munmap(data_of_pool->memory, data_of_pool->capacity);
-          free(data_of_pool);
-          pool = NULL;
-      }
-      else
-        wl_shm_pool_set_user_data(pool, data_of_pool);
+    
+    shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (shm_data == MAP_FAILED) {
+	fprintf(stderr, "mmap failed: %m\n");
+	close(fd);
+	exit(1);
     }
-  }
-}
+
+    pool = wl_shm_create_pool(shm, fd, size);
 
 @ @<Free memory pool@>=
-data_of_pool = wl_shm_pool_get_user_data(pool);
-wl_shm_pool_destroy(pool);
-munmap(data_of_pool->memory, data_of_pool->capacity);
-free(data_of_pool);
+//munmap(memory, capacity);
 
 @ @<Struct...@>=
 static const uint32_t PIXEL_FORMAT_ID = WL_SHM_FORMAT_ARGB8888;
@@ -229,7 +222,7 @@ fact that the memory pool was previously filled with data and just pass the imag
 dimensions as a parameter.
 
 @ @<Free buffer@>=
-wl_buffer_destroy(buffer);
+//wl_buffer_destroy(buffer);
 
 @ Objects representing visible elements are called surfaces. Surfaces are rectangular
 areas, having position and size. Surface contents are filled by using buffer objects.
@@ -239,22 +232,14 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 
 @<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
-if (surface == NULL) shell_surface = NULL;
-else {
-  shell_surface = wl_shell_get_shell_surface(shell, surface);
+shell_surface = wl_shell_get_shell_surface(shell, surface);
 
-  if (shell_surface == NULL)
-    wl_surface_destroy(surface);
-  else {
-    wl_shell_surface_set_toplevel(shell_surface);
-    wl_shell_surface_set_user_data(shell_surface, surface);
+    /*|wl_shell_surface_set_user_data(shell_surface, surface);|*/
     /*|wl_surface_set_user_data(surface, NULL);|*/
-  }
-}
 
 @ @<Free surface@>=
-wl_shell_surface_destroy(shell_surface);
-wl_surface_destroy(surface);
+//wl_shell_surface_destroy(shell_surface);
+//wl_surface_destroy(surface);
 
 @ To make the buffer visible we need to bind buffer data to a surface, that is, we
 set the surface contents to the buffer data. The bind operation also commits the
@@ -268,12 +253,124 @@ in this program it's enough to commit only once, as part of the bind operation.
 
 @<Bind buffer@>=
 buffer = wl_shm_pool_create_buffer(pool,
-  data_of_pool->size, WIDTH, HEIGHT,
-  WIDTH*sizeof(pixel), PIXEL_FORMAT_ID);
-data_of_pool->size += WIDTH*HEIGHT*sizeof(pixel);
+  0, WIDTH, HEIGHT,
+  WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
+//wl_shm_pool_destroy(pool);
+
 /*|surface = wl_shell_surface_get_user_data(shell_surface);|*/
+
+wl_shell_surface_set_toplevel(shell_surface);
+
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
+
+@ {\tt\catcode`_11 https://jan.newmarch.name/Wayland/SharedMemory/#heading_toc_j_2}
+
+@<Functions for shared memory@>=
+static int
+set_cloexec_or_close(int fd)
+{
+        long flags;
+
+        if (fd == -1)
+                return -1;
+
+        flags = fcntl(fd, F_GETFD);
+        if (flags == -1)
+                goto err;
+
+        if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
+                goto err;
+
+        return fd;
+
+err:
+        close(fd);
+        return -1;
+}
+
+static int
+create_tmpfile_cloexec(char *tmpname)
+{
+        int fd;
+
+#ifdef HAVE_MKOSTEMP
+        fd = mkostemp(tmpname, O_CLOEXEC);
+        if (fd >= 0)
+                unlink(tmpname);
+#else
+        fd = mkstemp(tmpname);
+        if (fd >= 0) {
+                fd = set_cloexec_or_close(fd);
+                unlink(tmpname);
+        }
+#endif
+
+        return fd;
+}
+
+/*
+ * Create a new, unique, anonymous file of the given size, and
+ * return the file descriptor for it. The file descriptor is set
+ * CLOEXEC. The file is immediately suitable for mmap()'ing
+ * the given size at offset zero.
+ *
+ * The file should not have a permanent backing store like a disk,
+ * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
+ *
+ * The file name is deleted from the file system.
+ *
+ * The file is suitable for buffer sharing between processes by
+ * transmitting the file descriptor over Unix sockets using the
+ * SCM_RIGHTS methods.
+ */
+int
+os_create_anonymous_file(off_t size)
+{
+        static const char template[] = "/weston-shared-XXXXXX";
+        const char *path;
+        char *name;
+        int fd;
+
+        path = getenv("XDG_RUNTIME_DIR");
+        if (!path) {
+                errno = ENOENT;
+                return -1;
+        }
+
+        name = malloc(strlen(path) + sizeof(template));
+        if (!name)
+                return -1;
+        strcpy(name, path);
+        strcat(name, template);
+
+        fd = create_tmpfile_cloexec(name);
+
+        free(name);
+
+        if (fd < 0)
+                return -1;
+
+        if (ftruncate(fd, size) < 0) {
+                close(fd);
+                return -1;
+        }
+
+        return fd;
+}
+
+@ @<Predecl...@>=
+void
+shm_format(void *data, struct wl_shm *wl_shm, uint32_t format);
+@ @c
+void
+shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
+{
+    //struct display *d = data;
+
+    //	d->formats |= (1 << format);
+/*|    fprintf(stderr, "Format %d\n", format); |*/
+}
 
 @ @<Head...@>=
 #include <stdio.h>
@@ -287,5 +384,6 @@ wl_surface_commit(surface);
 #include <stdlib.h>
 #include <unistd.h>
 #include <wayland-client.h>
+#include <errno.h>
 
 @* Index.
