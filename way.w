@@ -185,7 +185,7 @@ surface = wl_compositor_create_surface(compositor);
 shell_surface = wl_shell_get_shell_surface(shell, surface);
 wl_shell_surface_set_toplevel(shell_surface);
 wl_shell_surface_add_listener(shell_surface,
-  &shell_surface_listener, NULL);
+  &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
 
 @ To make the buffer visible we need to bind buffer data to a surface, that is, we
 set the surface contents to the buffer data. The bind operation also commits the
