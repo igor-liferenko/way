@@ -275,13 +275,6 @@ static void shell_surface_ping(void *data,
     wl_shell_surface_pong(shell_surface, serial);
 }
 
-@ @<Struct...@>=
-static const struct wl_shell_surface_listener
-    shell_surface_listener = {
-    .ping = shell_surface_ping,
-    .configure = shell_surface_configure,
-};
-
 @ Objects representing visible elements are called surfaces. Surfaces are rectangular
 areas, having position and size. Surface contents are filled by using buffer objects.
 During the lifetime of a surface, a couple of buffers will be attached as the surface
@@ -297,8 +290,6 @@ else {
   if (shell_surface == NULL)
     wl_surface_destroy(surface);
   else {
-    wl_shell_surface_add_listener(shell_surface,
-        &shell_surface_listener, 0);
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_user_data(shell_surface, surface);
     wl_surface_set_user_data(surface, NULL);
@@ -349,26 +340,5 @@ static void registry_global(void *data,
     const char *interface, uint32_t version);
 struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
     unsigned width, unsigned height);
-static void shell_surface_ping(void *data,
-    struct wl_shell_surface *shell_surface, uint32_t serial);
-static void shell_surface_configure(void *data,
-    struct wl_shell_surface *shell_surface,
-    uint32_t edges, int32_t width, int32_t height) { }
-static void pointer_enter(void *data,
-    struct wl_pointer *wl_pointer,
-    uint32_t serial, struct wl_surface *surface,
-    wl_fixed_t surface_x, wl_fixed_t surface_y);
-static void pointer_leave(void *data,
-    struct wl_pointer *wl_pointer, uint32_t serial,
-    struct wl_surface *wl_surface) { }
-static void pointer_motion(void *data,
-    struct wl_pointer *wl_pointer, uint32_t time,
-    wl_fixed_t surface_x, wl_fixed_t surface_y) { }
-static void pointer_button(void *data,
-    struct wl_pointer *wl_pointer, uint32_t serial,
-    uint32_t time, uint32_t button, uint32_t state);
-static void pointer_axis(void *data,
-    struct wl_pointer *wl_pointer, uint32_t time,
-    uint32_t axis, wl_fixed_t value) { }
 
 @* Index.
