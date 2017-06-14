@@ -231,13 +231,6 @@ dimensions as a parameter.
 @ @<Free buffer@>=
 wl_buffer_destroy(buffer);
 
-@ @c
-static void shell_surface_ping(void *data,
-    struct wl_shell_surface *shell_surface, uint32_t serial)
-{
-    wl_shell_surface_pong(shell_surface, serial);
-}
-
 @ Objects representing visible elements are called surfaces. Surfaces are rectangular
 areas, having position and size. Surface contents are filled by using buffer objects.
 During the lifetime of a surface, a couple of buffers will be attached as the surface
