@@ -3,44 +3,24 @@
 
 @s int32_t int
 
-@* Main program.
-
-Here we discribe the complete set of steps necessary to communicate
-with the display server to display the hello world window.
-
-@c
+@ @c
 @<Header files@>;
 @<Predeclarations of procedures@>;
 @<Struct...@>;
 @<Global...@>;
 
-@ @<Global...@>=
-struct wl_buffer *buffer;
-struct wl_surface *surface;
-struct wl_shell_surface *shell_surface;
-struct wl_shm_pool *pool;
-void *shm_data;
-
-@ @c
-@<Functions for shared memory@>;
-
 int main(void)
 {
     @<Setup wayland@>;
-    @<Open image file@>;
-    @<Initialize memory pool from image@>;
     @<Create surface@>;
-    @<Bind buffer@>;
+    @<Create a shared memory buffer@>;
 
-    @<Draw first image@>;
-    sleep(5);
-    @<Draw second image@>;
-    sleep(5);
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_commit(surface);
 
-    @<Free buffer@>;
-    @<Free surface@>;
-    @<Free memory pool@>;
-    close(image);
+    wl_display_dispatch(display);
+    sleep(5);
+    close(fd);
     @<Cleanup wayland@>;
 
     return EXIT_SUCCESS;
@@ -55,14 +35,6 @@ static const unsigned HEIGHT = 200;
 
 @ This image file contains the hardcoded images for this program, already in a raw format
 for display: it's the pixel values for the main window.
-
-@<Open image file@>=
-int image;
-image = open("images.bin", O_RDWR);
-if (image < 0) {
-    perror("Error opening surface image");
-    return EXIT_FAILURE;
-}
 
 @ This calls the main loop with the global |display| object. The main
 loop exits when the done flag is true, either because of an error, or
@@ -94,6 +66,11 @@ running the main loop.
 
 @<Global variables@>=
 struct wl_display *display;
+struct wl_buffer *buffer;
+struct wl_surface *surface;
+struct wl_shell_surface *shell_surface;
+struct wl_shm_pool *pool;
+void *shm_data;
 
 @ |wl_display_connect| connects to wayland server.
 
@@ -114,15 +91,12 @@ if (display == NULL) {
 
 registry = wl_display_get_registry(display);
 wl_registry_add_listener(registry, &registry_listener, NULL);
+wl_display_dispatch(display);
 wl_display_roundtrip(display);
-wl_registry_destroy(registry);
 
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
-wl_shell_destroy(shell);
-wl_shm_destroy(shm);
-wl_compositor_destroy(compositor);
 wl_display_disconnect(display);
 
 @ @<Predecl...@>=
@@ -135,19 +109,17 @@ void registry_global(void *data,
     struct wl_registry *registry, uint32_t id,
     const char *interface, uint32_t version)
 {
-    if (strcmp(interface, "wl_compositor") == 0) {
+    if (strcmp(interface, "wl_compositor") == 0)
         compositor = wl_registry_bind(registry, 
 				      id, 
 				      &wl_compositor_interface, 
 				      1);
-    } else if (strcmp(interface, "wl_shell") == 0) {
+    else if (strcmp(interface, "wl_shell") == 0)
         shell = wl_registry_bind(registry, id,
                                  &wl_shell_interface, 1);
-    } else if (strcmp(interface, "wl_shm") == 0) {
+    else if (strcmp(interface, "wl_shm") == 0)
         shm = wl_registry_bind(registry, id,
                                  &wl_shm_interface, 1);
-	wl_shm_add_listener(shm, &shm_listener, NULL);
-    }
 }
 
 @ @<Struct...@>=
@@ -157,17 +129,6 @@ static void registry_global_remove(void *a,
 static const struct wl_registry_listener registry_listener = {
     .global = registry_global,
     .global_remove = registry_global_remove
-};
-
-struct wl_shm_listener shm_listener = {
-	shm_format
-};
-
-struct pool_data {
-    int fd;
-    pixel_t *memory;
-    unsigned capacity;
-    unsigned size;
 };
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
@@ -188,30 +149,6 @@ read the whole program, you'll notice that there's no memory copy operation anyw
 image file is open once, and |mmap|ped once. No extra copy is required. This was done to
 make clear that a wayland application can have maximal efficiency if carefully implemented.
 
-@<Initialize memory...@>=
-    int size = WIDTH*HEIGHT*sizeof(pixel_t);
-    int fd;
-    struct wl_buffer *buff;
-
-    fd = os_create_anonymous_file(size);
-    if (fd < 0) {
-	fprintf(stderr, "creating a buffer file for %d B failed: %m\n",
-		size);
-	exit(1);
-    }
-    
-    shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (shm_data == MAP_FAILED) {
-	fprintf(stderr, "mmap failed: %m\n");
-	close(fd);
-	exit(1);
-    }
-
-    pool = wl_shm_create_pool(shm, fd, size);
-
-@ @<Free memory pool@>=
-//munmap(memory, capacity);
-
 @ @<Struct...@>=
 static const uint32_t PIXEL_FORMAT_ID = WL_SHM_FORMAT_ARGB8888;
 
@@ -220,9 +157,6 @@ memory pool (they are memory pool slices), so that they are shared by the client
 the server. In our example, we do not create an empty buffer, instead we rely on the
 fact that the memory pool was previously filled with data and just pass the image
 dimensions as a parameter.
-
-@ @<Free buffer@>=
-//wl_buffer_destroy(buffer);
 
 @ Objects representing visible elements are called surfaces. Surfaces are rectangular
 areas, having position and size. Surface contents are filled by using buffer objects.
@@ -233,13 +167,7 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 @<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
 shell_surface = wl_shell_get_shell_surface(shell, surface);
-
-    /*|wl_shell_surface_set_user_data(shell_surface, surface);|*/
-    /*|wl_surface_set_user_data(surface, NULL);|*/
-
-@ @<Free surface@>=
-//wl_shell_surface_destroy(shell_surface);
-//wl_surface_destroy(surface);
+wl_shell_surface_set_toplevel(shell_surface);
 
 @ To make the buffer visible we need to bind buffer data to a surface, that is, we
 set the surface contents to the buffer data. The bind operation also commits the
@@ -251,126 +179,27 @@ commit request and for sending the ownership back to the client, the server send
 release event. In a generic application, the surface will be moved back and forth, but
 in this program it's enough to commit only once, as part of the bind operation.
 
-@<Bind buffer@>=
+In the Wayland shared memory model, an area of shared memory is created using the
+file descriptor for a file. This memory is then mapped into a Wayland structure
+called a pool, which represents a block of data of some kind, linked to the
+global Wayland shared memory object. This is then used to create a
+Wayland buffer, which is used for most of the window operations later.
+
+@<Create a shared memory buffer@>=
+int size = WIDTH*HEIGHT*sizeof(pixel_t);
+
+int fd;
+
+fd = open("images.bin", O_RDWR);
+
+shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+pool = wl_shm_create_pool(shm, fd, size);
+
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
-//wl_shm_pool_destroy(pool);
-
-/*|surface = wl_shell_surface_get_user_data(shell_surface);|*/
-
-wl_shell_surface_set_toplevel(shell_surface);
-
-wl_surface_attach(surface, buffer, 0, 0);
-wl_surface_commit(surface);
-
-@ {\tt\catcode`_11 https://jan.newmarch.name/Wayland/SharedMemory/#heading_toc_j_2}
-
-@<Functions for shared memory@>=
-static int
-set_cloexec_or_close(int fd)
-{
-        long flags;
-
-        if (fd == -1)
-                return -1;
-
-        flags = fcntl(fd, F_GETFD);
-        if (flags == -1)
-                goto err;
-
-        if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
-                goto err;
-
-        return fd;
-
-err:
-        close(fd);
-        return -1;
-}
-
-static int
-create_tmpfile_cloexec(char *tmpname)
-{
-        int fd;
-
-#ifdef HAVE_MKOSTEMP
-        fd = mkostemp(tmpname, O_CLOEXEC);
-        if (fd >= 0)
-                unlink(tmpname);
-#else
-        fd = mkstemp(tmpname);
-        if (fd >= 0) {
-                fd = set_cloexec_or_close(fd);
-                unlink(tmpname);
-        }
-#endif
-
-        return fd;
-}
-
-/*
- * Create a new, unique, anonymous file of the given size, and
- * return the file descriptor for it. The file descriptor is set
- * CLOEXEC. The file is immediately suitable for mmap()'ing
- * the given size at offset zero.
- *
- * The file should not have a permanent backing store like a disk,
- * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
- *
- * The file name is deleted from the file system.
- *
- * The file is suitable for buffer sharing between processes by
- * transmitting the file descriptor over Unix sockets using the
- * SCM_RIGHTS methods.
- */
-int
-os_create_anonymous_file(off_t size)
-{
-        static const char template[] = "/weston-shared-XXXXXX";
-        const char *path;
-        char *name;
-        int fd;
-
-        path = getenv("XDG_RUNTIME_DIR");
-        if (!path) {
-                errno = ENOENT;
-                return -1;
-        }
-
-        name = malloc(strlen(path) + sizeof(template));
-        if (!name)
-                return -1;
-        strcpy(name, path);
-        strcat(name, template);
-
-        fd = create_tmpfile_cloexec(name);
-
-        free(name);
-
-        if (fd < 0)
-                return -1;
-
-        if (ftruncate(fd, size) < 0) {
-                close(fd);
-                return -1;
-        }
-
-        return fd;
-}
-
-@ @<Predecl...@>=
-void
-shm_format(void *data, struct wl_shm *wl_shm, uint32_t format);
-@ @c
-void
-shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
-{
-    //struct display *d = data;
-
-    //	d->formats |= (1 << format);
-/*|    fprintf(stderr, "Format %d\n", format); |*/
-}
+wl_shm_pool_destroy(pool);
 
 @ @<Head...@>=
 #include <stdio.h>
