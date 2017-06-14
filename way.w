@@ -82,7 +82,6 @@ if (wl_display_dispatch(display) < 0)
 @ @<Struct...@>=
 typedef uint32_t pixel;
 struct wl_compositor *compositor;
-struct wl_seat *seat;
 struct wl_shell *shell;
 struct wl_shm *shm;
 
@@ -119,7 +118,6 @@ wl_registry_destroy(registry);
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
-wl_seat_destroy(seat);
 wl_shell_destroy(shell);
 wl_shm_destroy(shm);
 wl_compositor_destroy(compositor);
@@ -144,10 +142,6 @@ void registry_global(void *data,
     else if (strcmp(interface, wl_shell_interface.name) == 0)
         shell = wl_registry_bind(registry, name,
             &wl_shell_interface, min(version, 1));
-    else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        seat = wl_registry_bind(registry, name,
-            &wl_seat_interface, min(version, 2));
-    }
 }
 
 @ @<Struct...@>=
