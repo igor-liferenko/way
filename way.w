@@ -8,6 +8,7 @@
 @<Predeclarations of procedures@>;
 @<Struct...@>;
 @<Global...@>;
+@<Keep-alive@>;
 
 int main(void)
 {
@@ -18,13 +19,44 @@ int main(void)
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
 
-    wl_display_dispatch(display);
-    sleep(5);
-    close(fd);
+    while (wl_display_dispatch(display) != -1) {
+	;
+    }
+
     @<Cleanup wayland@>;
 
     return EXIT_SUCCESS;
 }
+
+@ If we do not use this, we get "window is not responding" warning.
+|shell_surface_listener| is activated with |wl_shell_surface_add_listener|
+in another section.
+
+@<Keep-alive@>=
+static void
+handle_ping(void *data, struct wl_shell_surface *shell_surface,
+							uint32_t serial)
+{
+    wl_shell_surface_pong(shell_surface, serial);
+}
+
+static void
+handle_configure(void *data, struct wl_shell_surface *shell_surface,
+		 uint32_t edges, int32_t width, int32_t height)
+{
+}
+
+static void
+handle_popup_done(void *data, struct wl_shell_surface *shell_surface)
+{
+}
+
+static const struct wl_shell_surface_listener shell_surface_listener = {
+	handle_ping,
+	handle_configure,
+	handle_popup_done
+};
+
 
 @ In this program we display an image as the main window.
 Its geometry is hardcoded. This image file contains the hardcoded image
@@ -152,6 +184,8 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 surface = wl_compositor_create_surface(compositor);
 shell_surface = wl_shell_get_shell_surface(shell, surface);
 wl_shell_surface_set_toplevel(shell_surface);
+wl_shell_surface_add_listener(shell_surface,
+  &shell_surface_listener, NULL);
 
 @ To make the buffer visible we need to bind buffer data to a surface, that is, we
 set the surface contents to the buffer data. The bind operation also commits the
@@ -184,6 +218,7 @@ buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
 wl_shm_pool_destroy(pool);
+close(fd);
 
 @ @<Head...@>=
 #include <stdio.h>
