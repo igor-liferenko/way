@@ -234,30 +234,6 @@ the server. In our example, we do not create an empty buffer, instead we rely on
 fact that the memory pool was previously filled with data and just pass the image
 dimensions as a parameter.
 
-@<Predecl...@>=
-struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
-    unsigned width, unsigned height);
-
-@ @c
-struct wl_buffer *hello_create_buffer(struct wl_shm_pool *pool,
-    unsigned width, unsigned height)
-{
-    struct pool_data *pool_data;
-    struct wl_buffer *buffer;
-
-    pool_data = wl_shm_pool_get_user_data(pool);
-    buffer = wl_shm_pool_create_buffer(pool,
-        pool_data->size, width, height,
-        width*sizeof(pixel), PIXEL_FORMAT_ID);
-
-    if (buffer == NULL)
-        return NULL;
-
-    pool_data->size += width*height*sizeof(pixel);
-
-    return buffer;
-}
-
 @ @<Free buffer@>=
 wl_buffer_destroy(buffer);
 
@@ -285,7 +261,7 @@ else {
   else {
     wl_shell_surface_set_toplevel(shell_surface);
     wl_shell_surface_set_user_data(shell_surface, surface);
-    wl_surface_set_user_data(surface, NULL);
+    /*|wl_surface_set_user_data(surface, NULL);|*/
   }
 }
 
@@ -304,8 +280,13 @@ release event. In a generic application, the surface will be moved back and fort
 in this program it's enough to commit only once, as part of the bind operation.
 
 @<Bind buffer@>=
-buffer = hello_create_buffer(pool, WIDTH, HEIGHT);
-surface = wl_shell_surface_get_user_data(shell_surface);
+struct pool_data *pool_data;
+pool_data = wl_shm_pool_get_user_data(pool);
+buffer = wl_shm_pool_create_buffer(pool,
+  pool_data->size, WIDTH, HEIGHT,
+  WIDTH*sizeof(pixel), PIXEL_FORMAT_ID);
+pool_data->size += WIDTH*HEIGHT*sizeof(pixel);
+/*|surface = wl_shell_surface_get_user_data(shell_surface);|*/
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
 
