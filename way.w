@@ -280,12 +280,10 @@ release event. In a generic application, the surface will be moved back and fort
 in this program it's enough to commit only once, as part of the bind operation.
 
 @<Bind buffer@>=
-struct pool_data *pool_data;
-pool_data = wl_shm_pool_get_user_data(pool);
 buffer = wl_shm_pool_create_buffer(pool,
-  pool_data->size, WIDTH, HEIGHT,
+  data_of_pool->size, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel), PIXEL_FORMAT_ID);
-pool_data->size += WIDTH*HEIGHT*sizeof(pixel);
+data_of_pool->size += WIDTH*HEIGHT*sizeof(pixel);
 /*|surface = wl_shell_surface_get_user_data(shell_surface);|*/
 wl_surface_attach(surface, buffer, 0, 0);
 wl_surface_commit(surface);
