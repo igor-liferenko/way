@@ -9,6 +9,7 @@
 @<Struct...@>;
 @<Global...@>;
 @<Keep-alive@>;
+@<Get pix...@>;
 
 int main(void)
 {
@@ -136,9 +137,12 @@ void registry_global(void *data,
     else if (strcmp(interface, "wl_shell") == 0)
         shell = wl_registry_bind(registry, id,
                                  &wl_shell_interface, 1);
-    else if (strcmp(interface, "wl_shm") == 0)
+    else if (strcmp(interface, "wl_shm") == 0) {
         shm = wl_registry_bind(registry, id,
                                  &wl_shm_interface, 1);
+        wl_shm_add_listener(shm, &shm_listener, NULL); /* see |@<Get pix...@>| for
+                                                          explanation */
+    }
 }
 
 @ @<Struct...@>=
@@ -219,6 +223,23 @@ buffer = wl_shm_pool_create_buffer(pool,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
 wl_shm_pool_destroy(pool);
 close(fd);
+
+@ Wayland has a global object of type |wl_shm *|. A client-side proxy for this is
+activated via |wl_shm_add_listener| in another section.
+
+@<Get pixel format@>=
+void
+shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
+{
+    //struct display *d = data;
+
+    //	d->formats |= (1 << format);
+//    fprintf(stderr, "Format %s\n", (char*)data);
+}
+
+struct wl_shm_listener shm_listener = {
+	shm_format
+};
 
 @ @<Head...@>=
 #include <stdio.h>
