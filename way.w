@@ -126,17 +126,19 @@ struct wl_registry *registry = wl_display_get_registry(display);
 wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get registry@>|
                                                                  for explanation */
 wl_display_roundtrip(display);
-
 if (compositor == NULL) {
-	fprintf(stderr, "Can't find compositor\n");
-	exit(1);
+       fprintf(stderr, "Can't find compositor\n");
+       exit(1);
 }
 
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
+wl_buffer_destroy(buffer);
 wl_registry_destroy(registry);
 wl_shm_pool_destroy(pool);
+wl_shm_destroy(shm);
+wl_compositor_destroy(compositor);
 wl_display_disconnect(display);
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
