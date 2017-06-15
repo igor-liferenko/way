@@ -53,11 +53,12 @@ handle_ping(void *data, struct wl_shell_surface *shell_surface,
 							uint32_t serial)
 {
     wl_shell_surface_pong(shell_surface, serial);
+    fprintf(stderr, "Pinged and ponged\n");
 }
 
 static void
 handle_configure(void *data, struct wl_shell_surface *shell_surface,
-		 uint32_t edges, int32_t width, int32_t height)
+	 uint32_t edges, int32_t width, int32_t height)
 {
 }
 
@@ -121,6 +122,7 @@ if (display == NULL) {
     perror("Error opening display");
     exit(EXIT_FAILURE);
 }
+printf("connected to display\n");
 
 struct wl_registry *registry = wl_display_get_registry(display);
 wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get registry@>|
@@ -130,6 +132,7 @@ if (compositor == NULL) {
        fprintf(stderr, "Can't find compositor\n");
        exit(1);
 }
+else fprintf(stderr, "Found compositor\n");
 
 @ |wc_display_disconnect| disconnects from wayland server.
 
@@ -177,11 +180,13 @@ if (surface == NULL) {
 	fprintf(stderr, "Can't create surface\n");
 	exit(1);
 }
+fprintf(stderr, "Created surface\n");
 shell_surface = wl_shell_get_shell_surface(shell, surface);
 if (shell_surface == NULL) {
 	fprintf(stderr, "Can't create shell surface\n");
 	exit(1);
 }
+fprintf(stderr, "Created shell surface\n");
 wl_shell_surface_set_toplevel(shell_surface);
 wl_shell_surface_add_listener(shell_surface,
   &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
@@ -246,7 +251,9 @@ void registry_global(void *data,
 }
 
 static void registry_global_remove(void *a,
-    struct wl_registry *b, uint32_t c) { }
+    struct wl_registry *b, uint32_t id) {
+  printf("Got a registry losing event for %d\n", id);
+}
 
 static const struct wl_registry_listener registry_listener = {
     .global = registry_global,
