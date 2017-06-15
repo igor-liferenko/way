@@ -19,10 +19,24 @@ int main(void)
 
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
+    wl_display_dispatch(display); /* this must be used after |wl_surface_commit| */
+    pixel_t *pixel = shm_data;
 
-    while (wl_display_dispatch(display) != -1) {
-	;
+    for (int i=0; i < HEIGHT; i++) {
+      for (int j=0; j < WIDTH; j++) {
+        if (j<WIDTH/2) *pixel = 0xffffff;
+	pixel++;
+      }
     }
+    sleep(5);
+    pixel = shm_data;
+    for (int i=0; i < HEIGHT; i++) {
+      for (int j=0; j < WIDTH; j++) {
+        if (i<HEIGHT/2) *pixel = 0xffffff;
+        pixel++;
+      }
+    }
+    sleep(5);
 
     @<Cleanup wayland@>;
 
@@ -102,17 +116,15 @@ We begin the application by connecting to the display server and requesting a
 collection of global objects from the server, filling in proxy variables representing them.
 
 @<Setup wayland@>=
-struct wl_registry *registry;
 display = wl_display_connect(NULL);
 if (display == NULL) {
     perror("Error opening display");
     exit(EXIT_FAILURE);
 }
 
-registry = wl_display_get_registry(display);
+struct wl_registry *registry = wl_display_get_registry(display);
 wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get registry@>|
                                                                  for explanation */
-wl_display_dispatch(display);
 wl_display_roundtrip(display);
 
 if (compositor == NULL) {
@@ -123,6 +135,8 @@ if (compositor == NULL) {
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
+wl_registry_destroy(registry);
+wl_shm_pool_destroy(pool);
 wl_display_disconnect(display);
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
@@ -208,7 +222,6 @@ pool = wl_shm_create_pool(shm, fd, size);
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
-wl_shm_pool_destroy(pool);
 
 @ Binding is done via |wl_registry_add_listener| in another section.
 
