@@ -5,11 +5,11 @@
 
 @ @c
 @<Header files@>;
-@<Predeclarations of procedures@>;
 @<Struct...@>;
 @<Global...@>;
 @<Keep-alive@>;
 @<Get pix...@>;
+@<Get registry@>;
 
 int main(void)
 {
@@ -110,7 +110,8 @@ if (display == NULL) {
 }
 
 registry = wl_display_get_registry(display);
-wl_registry_add_listener(registry, &registry_listener, NULL);
+wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get registry@>|
+                                                                 for explanation */
 wl_display_dispatch(display);
 wl_display_roundtrip(display);
 
@@ -118,41 +119,6 @@ wl_display_roundtrip(display);
 
 @<Cleanup wayland@>=
 wl_display_disconnect(display);
-
-@ @<Predecl...@>=
-void registry_global(void *data,
-    struct wl_registry *registry, uint32_t name,
-    const char *interface, uint32_t version);
-
-@ @c
-void registry_global(void *data,
-    struct wl_registry *registry, uint32_t id,
-    const char *interface, uint32_t version)
-{
-    if (strcmp(interface, "wl_compositor") == 0)
-        compositor = wl_registry_bind(registry, 
-				      id, 
-				      &wl_compositor_interface, 
-				      1);
-    else if (strcmp(interface, "wl_shell") == 0)
-        shell = wl_registry_bind(registry, id,
-                                 &wl_shell_interface, 1);
-    else if (strcmp(interface, "wl_shm") == 0) {
-        shm = wl_registry_bind(registry, id,
-                                 &wl_shm_interface, 1);
-        wl_shm_add_listener(shm, &shm_listener, NULL); /* see |@<Get pix...@>| for
-                                                          explanation */
-    }
-}
-
-@ @<Struct...@>=
-static void registry_global_remove(void *a,
-    struct wl_registry *b, uint32_t c) { }
-
-static const struct wl_registry_listener registry_listener = {
-    .global = registry_global,
-    .global_remove = registry_global_remove
-};
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
 accomplishes that by sharing memory areas between the client applications and the display
@@ -223,6 +189,37 @@ buffer = wl_shm_pool_create_buffer(pool,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
 wl_shm_pool_destroy(pool);
 close(fd);
+
+@ Binding is done via |wl_registry_add_listener| in another section.
+
+@<Get registry@>=
+void registry_global(void *data,
+    struct wl_registry *registry, uint32_t id,
+    const char *interface, uint32_t version)
+{
+    if (strcmp(interface, "wl_compositor") == 0)
+        compositor = wl_registry_bind(registry, 
+				      id, 
+				      &wl_compositor_interface, 
+				      1);
+    else if (strcmp(interface, "wl_shell") == 0)
+        shell = wl_registry_bind(registry, id,
+                                 &wl_shell_interface, 1);
+    else if (strcmp(interface, "wl_shm") == 0) {
+        shm = wl_registry_bind(registry, id,
+                                 &wl_shm_interface, 1);
+        wl_shm_add_listener(shm, &shm_listener, NULL); /* see |@<Get pix...@>| for
+                                                          explanation */
+    }
+}
+
+static void registry_global_remove(void *a,
+    struct wl_registry *b, uint32_t c) { }
+
+static const struct wl_registry_listener registry_listener = {
+    .global = registry_global,
+    .global_remove = registry_global_remove
+};
 
 @ Wayland has a global object of type |wl_shm *|. A client-side proxy for this is
 activated via |wl_shm_add_listener| in another section.
