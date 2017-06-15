@@ -8,7 +8,6 @@
 @<Struct...@>;
 @<Global...@>;
 @<Keep-alive@>;
-@<Get pix...@>;
 @<Get registry@>;
 @<Create shared memory@>;
 
@@ -226,12 +225,9 @@ void registry_global(void *data,
     else if (strcmp(interface, "wl_shell") == 0)
         shell = wl_registry_bind(registry, id,
                                  &wl_shell_interface, 1);
-    else if (strcmp(interface, "wl_shm") == 0) {
+    else if (strcmp(interface, "wl_shm") == 0)
         shm = wl_registry_bind(registry, id,
                                  &wl_shm_interface, 1);
-        wl_shm_add_listener(shm, &shm_listener, NULL); /* see |@<Get pix...@>| for
-                                                          explanation */
-    }
 }
 
 static void registry_global_remove(void *a,
@@ -240,23 +236,6 @@ static void registry_global_remove(void *a,
 static const struct wl_registry_listener registry_listener = {
     .global = registry_global,
     .global_remove = registry_global_remove
-};
-
-@ Wayland has a global object of type |wl_shm *|. A client-side proxy for this is
-activated via |wl_shm_add_listener| in another section.
-
-@<Get pixel format@>=
-void
-shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
-{
-    //struct display *d = data;
-
-    //	d->formats |= (1 << format);
-//    fprintf(stderr, "Format %s\n", (char*)data);
-}
-
-struct wl_shm_listener shm_listener = {
-	shm_format
 };
 
 @* Shared memory.
