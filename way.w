@@ -10,6 +10,7 @@
 @<Keep-alive@>;
 @<Get pix...@>;
 @<Get registry@>;
+@<Create shared memory@>;
 
 int main(void)
 {
@@ -115,6 +116,11 @@ wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get regi
 wl_display_dispatch(display);
 wl_display_roundtrip(display);
 
+if (compositor == NULL) {
+	fprintf(stderr, "Can't find compositor\n");
+	exit(1);
+}
+
 @ |wc_display_disconnect| disconnects from wayland server.
 
 @<Cleanup wayland@>=
@@ -152,7 +158,15 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 
 @<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
+if (surface == NULL) {
+	fprintf(stderr, "Can't create surface\n");
+	exit(1);
+}
 shell_surface = wl_shell_get_shell_surface(shell, surface);
+if (shell_surface == NULL) {
+	fprintf(stderr, "Can't create shell surface\n");
+	exit(1);
+}
 wl_shell_surface_set_toplevel(shell_surface);
 wl_shell_surface_add_listener(shell_surface,
   &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
@@ -177,18 +191,25 @@ Wayland buffer, which is used for most of the window operations later.
 int size = WIDTH*HEIGHT*sizeof(pixel_t);
 
 int fd;
-
-fd = open("images.bin", O_RDWR);
+fd = os_create_anonymous_file(size);
+if (fd < 0) {
+	fprintf(stderr, "creating a buffer file for %d B failed: %m\n",
+		size);
+	exit(1);
+}
 
 shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
+if (shm_data == MAP_FAILED) {
+	fprintf(stderr, "mmap failed: %m\n");
+	close(fd);
+	exit(1);
+}
 pool = wl_shm_create_pool(shm, fd, size);
 
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
-  WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
+  WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
 wl_shm_pool_destroy(pool);
-close(fd);
 
 @ Binding is done via |wl_registry_add_listener| in another section.
 
@@ -237,6 +258,114 @@ shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 struct wl_shm_listener shm_listener = {
 	shm_format
 };
+
+@* Shared memory.
+We will use shared memory to communicate information between client and server.
+Unix/Linux has two primary shared memory APIs: the older Sys V model, with calls such as
+\\{shmget}, \\{shmat}, etc. This has generally fallen out of favour, with the current
+preference being for memory mapped files and devices with |mmap|.
+
+Wayland uses the file-backed shared memory model. There is no expectation that a disk file
+is actually written to, but a file descriptor for a new open file is passed from the client
+to the server. The file is just a temporary file created using a call such as |mkstemp|. Code
+from Weston examples uses the directory |XDG_RUNTIME_DIR|. (XDG stands for the X Desktop Group
+which is now freedesktop.org). That directory is typically \.{/run/user/<user-id>}. The Weston
+examples also `anonymise' the file by unlinking its name after opening it.
+
+The code in this part is taken from \.{shared/os-compatibility.c}
+
+@<Create shared memory@>=
+int
+set_cloexec_or_close(int fd)
+{
+        long flags;
+
+        if (fd == -1)
+                return -1;
+
+        flags = fcntl(fd, F_GETFD);
+        if (flags == -1)
+                goto err;
+
+        if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
+                goto err;
+
+        return fd;
+
+err:
+        close(fd);
+        return -1;
+}
+
+int
+create_tmpfile_cloexec(char *tmpname)
+{
+        int fd;
+
+#ifdef HAVE_MKOSTEMP
+        fd = mkostemp(tmpname, O_CLOEXEC);
+        if (fd >= 0)
+                unlink(tmpname);
+#else
+        fd = mkstemp(tmpname);
+        if (fd >= 0) {
+                fd = set_cloexec_or_close(fd);
+                unlink(tmpname);
+        }
+#endif
+
+        return fd;
+}
+
+/*
+ * Create a new, unique, anonymous file of the given size, and
+ * return the file descriptor for it. The file descriptor is set
+ * CLOEXEC. The file is immediately suitable for mmap()'ing
+ * the given size at offset zero.
+ *
+ * The file should not have a permanent backing store like a disk,
+ * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
+ *
+ * The file name is deleted from the file system.
+ *
+ * The file is suitable for buffer sharing between processes by
+ * transmitting the file descriptor over Unix sockets using the
+ * SCM_RIGHTS methods.
+ */
+int
+os_create_anonymous_file(off_t size)
+{
+        static const char template[] = "/weston-shared-XXXXXX";
+        const char *path;
+        char *name;
+        int fd;
+
+        path = getenv("XDG_RUNTIME_DIR");
+        if (!path) {
+                errno = ENOENT;
+                return -1;
+        }
+
+        name = malloc(strlen(path) + sizeof(template));
+        if (!name)
+                return -1;
+        strcpy(name, path);
+        strcat(name, template);
+
+        fd = create_tmpfile_cloexec(name);
+
+        free(name);
+
+        if (fd < 0)
+                return -1;
+
+        if (ftruncate(fd, size) < 0) {
+                close(fd);
+                return -1;
+        }
+
+        return fd;
+}
 
 @ @<Head...@>=
 #include <stdio.h>
