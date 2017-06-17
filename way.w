@@ -90,6 +90,10 @@ wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get regi
                                                                  for explanation */
 wl_display_dispatch(display);
 wl_display_roundtrip(display);
+if (compositor == NULL) {
+	fprintf(stderr, "Can't find compositor\n");
+	exit(1);
+}
 
 @ Binding is done via |wl_registry_add_listener| in another section.
 
@@ -147,7 +151,15 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 
 @<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
+if (surface == NULL) {
+	fprintf(stderr, "Can't create surface\n");
+	exit(1);
+}
 shell_surface = wl_shell_get_shell_surface(shell, surface);
+if (shell_surface == NULL) {
+	fprintf(stderr, "Can't create shell surface\n");
+	exit(1);
+}
 wl_shell_surface_set_toplevel(shell_surface);
 wl_shell_surface_add_listener(shell_surface,
   &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
