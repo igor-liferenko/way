@@ -3,12 +3,18 @@
 
 @s int32_t int
 
-@ @c
+@ @d WIDTH 320
+@d HEIGHT 200
+
+@c
 @<Header files@>;
-@<Predeclarations of procedures@>;
-@<Struct...@>;
+typedef uint32_t pixel_t;
+struct wl_compositor *compositor;
+struct wl_shell *shell;
+struct wl_shm *shm;
 @<Global...@>;
 @<Keep-alive@>;
+@<Get registry@>;
 
 int main(void)
 {
@@ -22,8 +28,6 @@ int main(void)
     while (wl_display_dispatch(display) != -1) {
 	;
     }
-
-    @<Cleanup wayland@>;
 
     return EXIT_SUCCESS;
 }
@@ -57,27 +61,6 @@ static const struct wl_shell_surface_listener shell_surface_listener = {
 	handle_popup_done
 };
 
-
-@ In this program we display an image as the main window.
-Its geometry is hardcoded. This image file contains the hardcoded image
-for this program, already in a raw format
-for display: it's the pixel values for the main window.
-
-@<Global...@>=
-static const unsigned WIDTH = 320;
-static const unsigned HEIGHT = 200;
-
-@* Protocol details.
-
-@d min(a, b) ((a) < (b) ? (a) : (b))
-@d max(a, b) ((a) > (b) ? (a) : (b))
-
-@ @<Struct...@>=
-typedef uint32_t pixel_t;
-struct wl_compositor *compositor;
-struct wl_shell *shell;
-struct wl_shm *shm;
-
 @ The |display| object is the most important. It represents the connection
 to the display server and is
 used for sending requests and receiving events. It is used in the code for
@@ -109,21 +92,14 @@ if (display == NULL) {
 }
 
 registry = wl_display_get_registry(display);
-wl_registry_add_listener(registry, &registry_listener, NULL);
+wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get registry@>|
+                                                                 for explanation */
 wl_display_dispatch(display);
 wl_display_roundtrip(display);
 
-@ |wc_display_disconnect| disconnects from wayland server.
+@ Binding is done via |wl_registry_add_listener| in another section.
 
-@<Cleanup wayland@>=
-wl_display_disconnect(display);
-
-@ @<Predecl...@>=
-void registry_global(void *data,
-    struct wl_registry *registry, uint32_t name,
-    const char *interface, uint32_t version);
-
-@ @c
+@<Get registry@>=
 void registry_global(void *data,
     struct wl_registry *registry, uint32_t id,
     const char *interface, uint32_t version)
@@ -141,7 +117,6 @@ void registry_global(void *data,
                                  &wl_shm_interface, 1);
 }
 
-@ @<Struct...@>=
 static void registry_global_remove(void *a,
     struct wl_registry *b, uint32_t c) { }
 
@@ -204,16 +179,25 @@ global Wayland shared memory object. This is then used to create a
 Wayland buffer, which is used for most of the window operations later.
 
 @<Create a shared memory buffer@>=
-int size = WIDTH*HEIGHT*sizeof(pixel_t);
-
 int fd;
-fd = open("images.bin", O_RDWR); /* must be writable for wayland not to fail */
+FILE *fp;
+int size = WIDTH*HEIGHT*sizeof(pixel_t);
+if ((fp = fopen("/tmp/mf-wayland.pid", "w")) == NULL) {
+  fprintf(stderr, "error: %s\n", strerror(errno));
+  exit(EXIT_FAILURE);
+}
+fprintf(fp, "%d", (int) getpid());
+fclose(fp);
+if ((fd = open("images.bin", O_RDWR)) == -1) {
+  fprintf(stderr, "error: %s\n", strerror(errno));
+  exit(EXIT_FAILURE);
+}
 shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 pool = wl_shm_create_pool(shm, fd, size);
 close(fd);
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
-  WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_ARGB8888);
+  WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
 wl_shm_pool_destroy(pool);
 
 @ @<Head...@>=
