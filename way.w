@@ -190,7 +190,7 @@ if ((fp = fopen("/tmp/mf-wayland.pid", "w")) == NULL) {
 }
 fprintf(fp, "%d", (int) getpid());
 fclose(fp);
-if ((fd = open("images.bin", O_RDWR)) == -1) {
+if ((fd = open("/tmp/mf-wayland.bin", O_RDWR)) == -1) {
   fprintf(stderr, "error: %s\n", strerror(errno));
   exit(EXIT_FAILURE);
 }
