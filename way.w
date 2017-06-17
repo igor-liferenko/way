@@ -160,7 +160,7 @@ if (shell_surface == NULL) {
 	fprintf(stderr, "Can't create shell surface\n");
 	exit(1);
 }
-wl_shell_surface_set_toplevel(shell_surface);
+wl_shell_surface_set_fullscreen(shell_surface,WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT,0,NULL);
 wl_shell_surface_add_listener(shell_surface,
   &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
 
