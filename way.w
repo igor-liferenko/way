@@ -9,9 +9,6 @@
 @c
 @<Header files@>;
 typedef uint32_t pixel_t;
-struct wl_compositor *compositor;
-struct wl_shell *shell;
-struct wl_shm *shm;
 @<Global...@>;
 @<Keep-alive@>;
 @<Get registry@>;
@@ -37,28 +34,22 @@ int main(void)
 in another section.
 
 @<Keep-alive@>=
-static void
+void
 handle_ping(void *data, struct wl_shell_surface *shell_surface,
 							uint32_t serial)
 {
     wl_shell_surface_pong(shell_surface, serial);
 }
 
-static void
+void
 handle_configure(void *data, struct wl_shell_surface *shell_surface,
 		 uint32_t edges, int32_t width, int32_t height)
 {
 }
 
-static void
-handle_popup_done(void *data, struct wl_shell_surface *shell_surface)
-{
-}
-
-static const struct wl_shell_surface_listener shell_surface_listener = {
+const struct wl_shell_surface_listener shell_surface_listener = {
 	handle_ping,
-	handle_configure,
-	handle_popup_done
+	handle_configure
 };
 
 @ The |display| object is the most important. It represents the connection
@@ -67,6 +58,9 @@ used for sending requests and receiving events. It is used in the code for
 running the main loop.
 
 @<Global variables@>=
+struct wl_compositor *compositor;
+struct wl_shell *shell;
+struct wl_shm *shm;
 struct wl_display *display;
 struct wl_buffer *buffer;
 struct wl_surface *surface;
@@ -117,12 +111,8 @@ void registry_global(void *data,
                                  &wl_shm_interface, 1);
 }
 
-static void registry_global_remove(void *a,
-    struct wl_registry *b, uint32_t c) { }
-
 static const struct wl_registry_listener registry_listener = {
-    .global = registry_global,
-    .global_remove = registry_global_remove
+    registry_global
 };
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
