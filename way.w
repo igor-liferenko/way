@@ -81,8 +81,8 @@ collection of global objects from the server, filling in proxy variables represe
 struct wl_registry *registry;
 display = wl_display_connect(NULL);
 if (display == NULL) {
-    perror("Error opening display");
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "Error opening display\n");
+    exit(1);
 }
 
 registry = wl_display_get_registry(display);
