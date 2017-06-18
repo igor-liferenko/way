@@ -11,7 +11,9 @@
 typedef uint32_t pixel_t;
 @<Global...@>;
 void exit_gracefully(int x) {
-    system("echo -n 'DEBUG: exiting because of signal - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log");
+    system(
+"echo -n 'DEBUG: exiting because of signal - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log"
+    );
     wl_display_disconnect(display);
     system("rm /tmp/mf-wayland.pid");
     exit(0);
@@ -246,7 +248,9 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
                     uint32_t state)
 {
   if (key==125) {
-    system("echo -n 'DEBUG: exiting because of Super+F4 - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log");
+    system(
+"echo -n 'DEBUG: exiting because of Super+F4 - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log"
+    );
     wl_display_disconnect(display);
     system("rm /tmp/mf-wayland.pid");
     exit(0);
