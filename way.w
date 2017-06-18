@@ -241,6 +241,7 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
   if (key==125) {
     wl_display_disconnect(display);
     system("rm /tmp/mf-wayland.pid");
+    exit(0);
   }
 }
 
