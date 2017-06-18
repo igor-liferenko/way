@@ -11,6 +11,7 @@
 typedef uint32_t pixel_t;
 @<Global...@>;
 void exit_gracefully(int x) {
+    printf("DEBUG: exiting because of signal\n");
     wl_display_disconnect(display);
     system("rm /tmp/mf-wayland.pid");
     exit(0);
@@ -244,8 +245,12 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
                     uint32_t serial, uint32_t time, uint32_t key,
                     uint32_t state)
 {
-  if (key==125)
-    exit_gracefully(0);
+  if (key==125) {
+    printf("DEBUG: exiting because of Super+F4\n");
+    wl_display_disconnect(display);
+    system("rm /tmp/mf-wayland.pid");
+    exit(0);
+  }
 }
 
 void
