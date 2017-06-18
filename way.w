@@ -3,8 +3,8 @@
 
 @s int32_t int
 
-@ @d WIDTH 1280
-@d HEIGHT 1024
+@ @d WIDTH 1366
+@d HEIGHT 768
 
 @c
 @<Header files@>;
