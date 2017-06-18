@@ -3,7 +3,7 @@
 
 @s int32_t int
 
-@ @d WIDTH 1366
+@ @d WIDTH 1024
 @d HEIGHT 768
 
 @c
