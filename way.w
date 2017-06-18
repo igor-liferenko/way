@@ -10,12 +10,18 @@
 @<Header files@>;
 typedef uint32_t pixel_t;
 @<Global...@>;
+void exit_gracefully(int x) {
+    wl_display_disconnect(display);
+    system("rm /tmp/mf-wayland.pid");
+    exit(0);
+}
 @<Keep-alive@>;
 @<Input devices@>;
 @<Get registry@>;
 
 int main(void)
 {
+    signal(SIGINT, exit_gracefully);
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create a shared memory buffer@>;
@@ -238,11 +244,8 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
                     uint32_t serial, uint32_t time, uint32_t key,
                     uint32_t state)
 {
-  if (key==125) {
-    wl_display_disconnect(display);
-    system("rm /tmp/mf-wayland.pid");
-    exit(0);
-  }
+  if (key==125)
+    exit_gracefully(0);
 }
 
 void
@@ -292,5 +295,6 @@ const struct wl_seat_listener seat_listener = {
 #include <unistd.h>
 #include <wayland-client.h>
 #include <errno.h>
+#include <signal.h>
 
 @* Index.
