@@ -10,13 +10,11 @@
 @<Header files@>;
 typedef uint32_t pixel_t;
 @<Global...@>;
-void exit_gracefully(int x) {
-    system(
-"echo -n 'DEBUG: exiting because of signal - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log"
-    );
-    wl_display_disconnect(display);
-    system("rm /tmp/mf-wayland.pid");
-    exit(0);
+void terminate(int x) {
+    system("echo -n 'DEBUG: exiting because of signal - ' >>/tmp/mf-debug.log;" @t}\3{-5@>
+           @t\hskip 15pt@>
+           "date >>/tmp/mf-debug.log");
+    @<Terminate@>;
 }
 @<Keep-alive@>;
 @<Input devices@>;
@@ -24,7 +22,7 @@ void exit_gracefully(int x) {
 
 int main(void)
 {
-    signal(SIGINT, exit_gracefully);
+    signal(SIGINT, terminate);
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create a shared memory buffer@>;
@@ -178,7 +176,8 @@ if (shell_surface == NULL) {
 	fprintf(stderr, "Can't create shell surface\n");
 	exit(1);
 }
-wl_shell_surface_set_fullscreen(shell_surface,WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT,0,NULL);
+wl_shell_surface_set_fullscreen(shell_surface,
+  @=WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT@>,0,NULL);
 wl_shell_surface_add_listener(shell_surface,
   &shell_surface_listener, NULL); /* see |@<Keep-alive@>| for explanation of this */
 
@@ -248,12 +247,10 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
                     uint32_t state)
 {
   if (key==125) {
-    system(
-"echo -n 'DEBUG: exiting because of Super+F4 - ' >>/tmp/mf-debug.log; date >>/tmp/mf-debug.log"
-    );
-    wl_display_disconnect(display);
-    system("rm /tmp/mf-wayland.pid");
-    exit(0);
+    system("echo -n 'DEBUG: exiting because of Super+F4 - ' >>/tmp/mf-debug.log;" @t}\3{-5@>
+           @t\hskip 15pt@>
+           "date >>/tmp/mf-debug.log");
+    @<Terminate@>;
   }
 }
 
@@ -290,6 +287,11 @@ seat_handle_capabilities(void *data, struct wl_seat *seat,
 const struct wl_seat_listener seat_listener = {
     seat_handle_capabilities,
 };
+
+@ @<Terminate@>=
+wl_display_disconnect(display);
+system("rm /tmp/mf-wayland.pid");
+exit(0);
 
 @ @<Head...@>=
 #include <stdio.h>

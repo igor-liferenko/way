@@ -1,1 +1,0 @@
-call necessary wayland cleanup functions in exit_gracefully() and keyboard_handle_key()
