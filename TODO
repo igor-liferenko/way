@@ -1,5 +1,0 @@
-call way from mf not via system, but via fork and communicate
-from parent to child when it must be closed (there are
-two cases - when parent exits and when parent specifically gives a
-signal to exit) and do not use pid file;
-and revert commit 9784a23f18de802a5923f11fea74a4d8089174c2
