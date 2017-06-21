@@ -11,13 +11,11 @@
 typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int x) {
-    system("echo -n 'DEBUG: exiting because of signal - ' >>/tmp/mf-debug.log;" @t}\3{-5@>
-           @t\hskip 15pt@>
-           "date >>/tmp/mf-debug.log");
-    @<Terminate@>;
+  wl_display_disconnect(display);
+  system("rm /tmp/mf-wayland.pid");
+  exit(0);
 }
 @<Keep-alive@>;
-@<Input devices@>;
 @<Get registry@>;
 
 int main(void)
@@ -76,8 +74,6 @@ struct wl_surface *surface;
 struct wl_shell_surface *shell_surface;
 struct wl_shm_pool *pool;
 void *shm_data;
-struct wl_seat *seat;
-struct wl_keyboard *keyboard;
 
 @ |wl_display_connect| connects to wayland server.
 
@@ -124,12 +120,6 @@ void registry_global(void *data,
     else if (strcmp(interface, "wl_shm") == 0)
         shm = wl_registry_bind(registry, id,
                                  &wl_shm_interface, 1);
-    else if (strcmp(interface, "wl_seat") == 0) {
-        seat = wl_registry_bind(registry, id,
-            &wl_seat_interface, 1);
-	wl_seat_add_listener(seat, &seat_listener, NULL); /* see |@<Input...@>| for
-                                                             explanation */
-    }
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -219,80 +209,6 @@ buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
 wl_shm_pool_destroy(pool);
-
-@ Binding is done in another section via |wl_seat_add_listener|.
-
-@<Input devices@>=
-void
-keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
-                       uint32_t format, int fd, uint32_t size)
-{
-}
-
-void
-keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
-                      uint32_t serial, struct wl_surface *surface,
-                      struct wl_array *keys)
-{
-}
-
-void
-keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
-                      uint32_t serial, struct wl_surface *surface)
-{
-}
-
-void
-keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
-                    uint32_t serial, uint32_t time, uint32_t key,
-                    uint32_t state)
-{
-  if (key==125) {
-    system("echo -n 'DEBUG: exiting because of Super+F4 - ' >>/tmp/mf-debug.log;" @t}\3{-5@>
-           @t\hskip 15pt@>
-           "date >>/tmp/mf-debug.log");
-    @<Terminate@>;
-  }
-}
-
-void
-keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
-                          uint32_t serial, uint32_t mods_depressed,
-                          uint32_t mods_latched, uint32_t mods_locked,
-                          uint32_t group)
-{
-}
-
-const struct wl_keyboard_listener keyboard_listener = {
-    keyboard_handle_keymap,
-    keyboard_handle_enter,
-    keyboard_handle_leave,
-    keyboard_handle_key,
-    keyboard_handle_modifiers,
-};
-
-
-void
-seat_handle_capabilities(void *data, struct wl_seat *seat,
-                         enum wl_seat_capability caps)
-{
-    if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
-	keyboard = wl_seat_get_keyboard(seat);
-	wl_keyboard_add_listener(keyboard, &keyboard_listener, NULL);
-    } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
-	wl_keyboard_destroy(keyboard);
-	keyboard = NULL;
-    }
-}
-
-const struct wl_seat_listener seat_listener = {
-    seat_handle_capabilities,
-};
-
-@ @<Terminate@>=
-wl_display_disconnect(display);
-system("rm /tmp/mf-wayland.pid");
-exit(0);
 
 @ @<Head...@>=
 #include <stdio.h>
