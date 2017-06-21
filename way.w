@@ -22,6 +22,7 @@ void terminate(int x) {
 
 int main(void)
 {
+    prctl(PR_SET_PDEATHSIG, SIGINT); /* https://stackoverflow.com/questions/284325/ */
     signal(SIGINT, terminate);
     @<Setup wayland@>;
     @<Create surface@>;
@@ -307,5 +308,6 @@ exit(0);
 #include <wayland-client.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/prctl.h>
 
 @* Index.
