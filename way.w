@@ -12,7 +12,7 @@ typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int x) {
   wl_display_disconnect(display);
-  system("rm /tmp/mf-wayland.pid");
+  unlink("/tmp/mf-wayland.pid");
   exit(0);
 }
 @<Keep-alive@>;
