@@ -203,6 +203,11 @@ if ((fd = open("/tmp/mf-wayland.bin", O_RDWR)) == -1) {
   exit(EXIT_FAILURE);
 }
 shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+if (shm_data == MAP_FAILED) {
+       fprintf(stderr, "mmap failed: %m\n");
+       close(fd);
+       exit(1);
+}
 pool = wl_shm_create_pool(shm, fd, size);
 close(fd);
 buffer = wl_shm_pool_create_buffer(pool,
