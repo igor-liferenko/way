@@ -18,8 +18,12 @@ void terminate(int x) {
 @<Keep-alive@>;
 @<Get registry@>;
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    if (argc != 2) {
+      fprintf(stderr, "missing file descriptor\n");
+      exit(1);
+    }
     prctl(PR_SET_PDEATHSIG, SIGINT); /* https://stackoverflow.com/questions/284325/ */
     signal(SIGINT, terminate);
     @<Setup wayland@>;
@@ -198,9 +202,9 @@ if ((fp = fopen("/tmp/mf-wayland.pid", "w")) == NULL) {
 }
 fprintf(fp, "%d", (int) getpid());
 fclose(fp);
-if ((fd = open("/tmp/mf-wayland.bin", O_RDWR)) == -1) {
-  fprintf(stderr, "error: %s\n", strerror(errno));
-  exit(EXIT_FAILURE);
+if (sscanf(argv[1], "%d", &fd) != 1) {
+   fprintf(stderr, "error: file descriptor not an integer\n");
+   exit(1);
 }
 shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 if (shm_data == MAP_FAILED) {
