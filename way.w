@@ -19,12 +19,23 @@ void terminate(int x) {
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2) {
-      fprintf(stderr, "missing file descriptor\n");
+    if (argc != 3) {
+      fprintf(stderr, "missing file descriptor(s)\n");
       exit(1);
     }
     prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
     signal(SIGINT, terminate);
+    int fdpipe;
+    if (sscanf(argv[2], "%d", &fdpipe) != 1) {
+       fprintf(stderr, "error: file descriptor not an integer\n");
+       exit(1);
+    }
+    while (close(fdpipe)) { /* notify parent */
+                if (errno == EINTR)
+                        continue;
+                fprintf(stderr,"notify parent error\x0a");
+                exit(1);
+    }
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create a shared memory buffer@>;
