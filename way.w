@@ -36,12 +36,7 @@ int main(int argc, char *argv[])
 
     prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
     signal(SIGINT, terminate);
-    while (close(fdpipe)) { /* notify parent */
-      if (errno == EINTR)
-        continue;
-      fprintf(stderr,"notify parent error\x0a");
-      exit(1);
-    }
+    close(fdpipe); /* notify parent that signals have been installed */
 
     @<Setup wayland@>;
     @<Create surface@>;
