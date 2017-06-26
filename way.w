@@ -20,22 +20,29 @@ void terminate(int x) {
 int main(int argc, char *argv[])
 {
     if (argc != 3) {
-      fprintf(stderr, "missing file descriptor(s)\n");
+      fprintf(stderr, "missing file descriptor\n");
       exit(1);
     }
-    prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
-    signal(SIGINT, terminate);
+    int fd;
+    if (sscanf(argv[1], "%d", &fd) != 1) {
+      fprintf(stderr, "error: file descriptor not an integer\n");
+      exit(1);
+    }
     int fdpipe;
     if (sscanf(argv[2], "%d", &fdpipe) != 1) {
-       fprintf(stderr, "error: file descriptor not an integer\n");
-       exit(1);
+      fprintf(stderr, "error: file descriptor not an integer\n");
+      exit(1);
     }
+
+    prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
+    signal(SIGINT, terminate);
     while (close(fdpipe)) { /* notify parent */
-                if (errno == EINTR)
-                        continue;
-                fprintf(stderr,"notify parent error\x0a");
-                exit(1);
+      if (errno == EINTR)
+        continue;
+      fprintf(stderr,"notify parent error\x0a");
+      exit(1);
     }
+
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create a shared memory buffer@>;
@@ -87,7 +94,6 @@ struct wl_buffer *buffer;
 struct wl_surface *surface;
 struct wl_shell_surface *shell_surface;
 struct wl_shm_pool *pool;
-void *shm_data;
 
 @ |wl_display_connect| connects to wayland server.
 
@@ -203,20 +209,8 @@ global Wayland shared memory object. This is then used to create a
 Wayland buffer, which is used for most of the window operations later.
 
 @<Create a shared memory buffer@>=
-int fd;
 int size = WIDTH*HEIGHT*sizeof(pixel_t);
-if (sscanf(argv[1], "%d", &fd) != 1) {
-   fprintf(stderr, "error: file descriptor not an integer\n");
-   exit(1);
-}
-shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-if (shm_data == MAP_FAILED) {
-       fprintf(stderr, "mmap failed: %m\n");
-       close(fd);
-       exit(1);
-}
 pool = wl_shm_create_pool(shm, fd, size);
-close(fd);
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
