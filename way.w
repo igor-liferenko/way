@@ -12,7 +12,6 @@ typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int x) {
   wl_display_disconnect(display);
-  unlink("/tmp/mf-wayland.pid");
   exit(0);
 }
 @<Keep-alive@>;
@@ -24,7 +23,7 @@ int main(int argc, char *argv[])
       fprintf(stderr, "missing file descriptor\n");
       exit(1);
     }
-    prctl(PR_SET_PDEATHSIG, SIGINT); /* https://stackoverflow.com/questions/284325/ */
+    prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
     signal(SIGINT, terminate);
     @<Setup wayland@>;
     @<Create surface@>;
@@ -194,14 +193,7 @@ Wayland buffer, which is used for most of the window operations later.
 
 @<Create a shared memory buffer@>=
 int fd;
-FILE *fp;
 int size = WIDTH*HEIGHT*sizeof(pixel_t);
-if ((fp = fopen("/tmp/mf-wayland.pid", "w")) == NULL) {
-  fprintf(stderr, "error: %s\n", strerror(errno));
-  exit(EXIT_FAILURE);
-}
-fprintf(fp, "%d", (int) getpid());
-fclose(fp);
 if (sscanf(argv[1], "%d", &fd) != 1) {
    fprintf(stderr, "error: file descriptor not an integer\n");
    exit(1);
