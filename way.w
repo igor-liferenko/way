@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
     struct sigaction sa;
     sa.sa_handler = terminate;
+    sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
     close(fdpipe); /* notify parent that signals have been installed */
 
