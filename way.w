@@ -35,7 +35,9 @@ int main(int argc, char *argv[])
     }
 
     prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
-    signal(SIGINT, terminate);
+    struct sigaction sa;
+    sa.sa_handler = terminate;
+    sigaction(SIGINT, &sa, NULL);
     close(fdpipe); /* notify parent that signals have been installed */
 
     @<Setup wayland@>;
