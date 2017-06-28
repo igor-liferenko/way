@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     sa.sa_handler = terminate;
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
-    char dummy = 0;
+    char dummy;
     write(fdpipe, &dummy, 1); /* notify parent that signals have been installed */
 
     @<Setup wayland@>;
