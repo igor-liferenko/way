@@ -19,28 +19,8 @@ void terminate(int x) {
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
-      fprintf(stderr, "missing file descriptor\n");
-      exit(1);
-    }
-    int fd;
-    if (sscanf(argv[1], "%d", &fd) != 1) {
-      fprintf(stderr, "error: file descriptor not an integer\n");
-      exit(1);
-    }
-    int fdpipe;
-    if (sscanf(argv[2], "%d", &fdpipe) != 1) {
-      fprintf(stderr, "error: file descriptor not an integer\n");
-      exit(1);
-    }
-
-    prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
-    struct sigaction sa;
-    sa.sa_handler = terminate;
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
-    char dummy;
-    write(fdpipe, &dummy, 1); /* notify parent that signals have been installed */
+    @<Install signal handlers and notify parent@>; /* this must be done as early as possible to
+      ensure that parent will not block forever if child exits prematurely */
 
     @<Setup wayland@>;
     @<Create surface@>;
@@ -55,6 +35,17 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+
+@ @<Install signal...@>=
+int fdpipe;
+sscanf(argv[2], "%d", &fdpipe);
+prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
+struct sigaction sa;
+sa.sa_handler = terminate;
+sa.sa_flags = 0;
+sigaction(SIGINT, &sa, NULL);
+char dummy;
+write(fdpipe, &dummy, 1); /* notify parent that signals have been installed */
 
 @ If we do not use this, we get "window is not responding" warning.
 |shell_surface_listener| is activated with |wl_shell_surface_add_listener|
@@ -208,6 +199,8 @@ global Wayland shared memory object. This is then used to create a
 Wayland buffer, which is used for most of the window operations later.
 
 @<Create a shared memory buffer@>=
+int fd;
+sscanf(argv[1], "%d", &fd);
 int size = WIDTH*HEIGHT*sizeof(pixel_t);
 pool = wl_shm_create_pool(shm, fd, size);
 buffer = wl_shm_pool_create_buffer(pool,
