@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     sa.sa_handler = terminate;
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
-    close(fdpipe); /* notify parent that signals have been installed */
+    close(fdpipe); /* notify parent that signals have been installed; blocks until |fdpipe[1]|
+                      is closed in parent */
 
     @<Setup wayland@>;
     @<Create surface@>;
