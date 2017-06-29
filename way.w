@@ -44,6 +44,7 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
 }
 prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
 struct sigaction sa;
+memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
 sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
