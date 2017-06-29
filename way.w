@@ -37,15 +37,18 @@ int main(int argc, char *argv[])
 }
 
 @ @<Install signal...@>=
-int fdpipe;
-sscanf(argv[2], "%d", &fdpipe);
+int pipefd;
+if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
+  fprintf(stderr, "This program must be run by metafont.\x0a");
+  exit(EXIT_FAILURE);
+}
 prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
 struct sigaction sa;
 sa.sa_handler = terminate;
 sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
 char dummy;
-write(fdpipe, &dummy, 1); /* notify parent that signals have been installed */
+write(pipefd, &dummy, 1); /* notify parent that signals have been installed */
 
 @ If we do not use this, we get "window is not responding" warning.
 |shell_surface_listener| is activated with |wl_shell_surface_add_listener|
@@ -200,7 +203,7 @@ Wayland buffer, which is used for most of the window operations later.
 
 @<Create a shared memory buffer@>=
 int fd;
-sscanf(argv[1], "%d", &fd);
+sscanf(argv[2], "%d", &fd);
 int size = WIDTH*HEIGHT*sizeof(pixel_t);
 pool = wl_shm_create_pool(shm, fd, size);
 buffer = wl_shm_pool_create_buffer(pool,
