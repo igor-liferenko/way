@@ -19,14 +19,15 @@ void terminate(int x) {
 
 int main(int argc, char *argv[])
 {
+    @<Install signal handlers@>;
     @<Setup wayland@>;
     @<Create surface@>;
-    @<Create a shared memory buffer@>;
+    @<Create buffer@>;
 
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
 
-    @<Install signal handlers and notify parent@>;
+    @<Notify parent@>;
 
     while (wl_display_dispatch(display) != -1) {
 	;
@@ -35,27 +36,29 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-@ Install signal handlern and allow the parent to proceed.
-This must be done when wayland is fully initialized, because parent may exit immediately,
-and the signal which was solicited by |prctl| will be delivered in the middle of
-wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
-output.
-
-@<Install signal...@>=
+@ @<Install signal...@>=
 int pipefd;
 if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
   fprintf(stderr, "This program must be run by metafont.\x0a");
   exit(EXIT_FAILURE);
 }
 prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
-/* NOTE: we can call |prtcl| in wayland.w */
+/* TODO: move this |prtcl| to wayland.w */
 struct sigaction sa;
 memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
 sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
+
+@ Allow the parent to proceed.
+This must be done when wayland is fully initialized, because parent may exit immediately,
+and the signal which was solicited by |prctl| will be delivered in the middle of
+wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
+output.
+
+@<Notify parent@>=
 char dummy;
-write(pipefd, &dummy, 1); /* notify parent that signals have been installed */
+write(pipefd, &dummy, 1);
 
 @ If we do not use this, we get "window is not responding" warning.
 |shell_surface_listener| is activated with |wl_shell_surface_add_listener|
@@ -109,6 +112,7 @@ struct wl_registry *registry;
 display = wl_display_connect(NULL);
 if (display == NULL) {
     fprintf(stderr, "Error opening display\n");
+    @<Notify parent@>;
     exit(1);
 }
 
@@ -119,6 +123,7 @@ wl_display_dispatch(display);
 wl_display_roundtrip(display);
 if (compositor == NULL) {
 	fprintf(stderr, "Can't find compositor\n");
+        @<Notify parent@>;
 	exit(1);
 }
 
@@ -180,11 +185,13 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 surface = wl_compositor_create_surface(compositor);
 if (surface == NULL) {
 	fprintf(stderr, "Can't create surface\n");
+        @<Notify parent@>;
 	exit(1);
 }
 shell_surface = wl_shell_get_shell_surface(shell, surface);
 if (shell_surface == NULL) {
 	fprintf(stderr, "Can't create shell surface\n");
+        @<Notify parent@>;
 	exit(1);
 }
 wl_shell_surface_set_fullscreen(shell_surface,
@@ -208,11 +215,10 @@ called a pool, which represents a block of data of some kind, linked to the
 global Wayland shared memory object. This is then used to create a
 Wayland buffer, which is used for most of the window operations later.
 
-@<Create a shared memory buffer@>=
+@<Create buffer@>=
 int fd;
 sscanf(argv[2], "%d", &fd);
-int size = WIDTH*HEIGHT*sizeof(pixel_t);
-pool = wl_shm_create_pool(shm, fd, size);
+pool = wl_shm_create_pool(shm, fd, WIDTH*HEIGHT*sizeof(pixel_t));
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
