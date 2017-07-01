@@ -42,8 +42,6 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
   fprintf(stderr, "This program must be run by metafont.\x0a");
   exit(EXIT_FAILURE);
 }
-prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
-/* TODO: move this |prtcl| to wayland.w */
 struct sigaction sa;
 memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
