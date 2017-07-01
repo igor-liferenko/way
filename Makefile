@@ -1,2 +1,2 @@
 way: way.c
-	gcc -o $@ $< `pkg-config wayland-client --cflags --libs`
+	gcc -o $@ $< -lwayland-client
