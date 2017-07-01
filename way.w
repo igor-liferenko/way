@@ -19,13 +19,16 @@ void terminate(int x) {
 
 int main(int argc, char *argv[])
 {
-    @<Install signal handlers@>;
+    @<Check if we were started correctly@>;
+
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create buffer@>;
 
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
+
+    @<Install signal handlers@>;
 
     @<Notify parent@>;
 
@@ -36,12 +39,16 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-@ @<Install signal...@>=
+@ Before doing anything.
+
+@<Check if we were started correctly@>=
 int pipefd;
 if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
   fprintf(stderr, "This program must be run by metafont.\x0a");
   exit(EXIT_FAILURE);
 }
+
+@ @<Install signal...@>=
 struct sigaction sa;
 memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
