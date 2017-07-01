@@ -56,8 +56,8 @@ sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
 
 @ Allow the parent to proceed.
-This must be done when wayland is fully initialized, because parent may exit immediately,
-and |SIGINT| will be delivered in the middle of
+This must be done when wayland is fully initialized, because parent may exit right after updating
+screen, and so |SIGINT| may be delivered in the middle of
 wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
 output.
 
