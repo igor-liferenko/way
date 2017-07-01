@@ -46,6 +46,7 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
   exit(EXIT_FAILURE);
 }
 prctl(PR_SET_PDEATHSIG, SIGINT); /* automatically close when metafont exits */
+/* NOTE: we can call |prtcl| in wayland.w */
 struct sigaction sa;
 memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
