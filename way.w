@@ -7,9 +7,6 @@
 @d HEIGHT 768
 
 @c
-
-/* TODO: fix libwayland-client segfault error in dmesg output when \.{mf cmr10} is run */
-
 @<Header files@>;
 typedef uint32_t pixel_t;
 @<Global...@>;
@@ -22,15 +19,14 @@ void terminate(int x) {
 
 int main(int argc, char *argv[])
 {
-    @<Install signal handlers and notify parent@>; /* this must be done as early as possible to
-      ensure that parent will not block forever if child exits prematurely */
-
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create a shared memory buffer@>;
 
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
+
+    @<Install signal handlers and notify parent@>;
 
     while (wl_display_dispatch(display) != -1) {
 	;
@@ -39,7 +35,13 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-@ @<Install signal...@>=
+@ Install signal handlern and allow the parent to proceed.
+This must be done when wayland is fully initialized, because parent may exit immediately,
+and the signal which was solicited by |prctl| will be delivered in the middle of
+wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
+output.
+
+@<Install signal...@>=
 int pipefd;
 if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
   fprintf(stderr, "This program must be run by metafont.\x0a");
