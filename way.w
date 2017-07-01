@@ -7,6 +7,9 @@
 @d HEIGHT 768
 
 @c
+
+/* TODO: fix libwayland-client segfault error in dmesg output when \.{mf cmr10} is run */
+
 @<Header files@>;
 typedef uint32_t pixel_t;
 @<Global...@>;
