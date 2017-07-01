@@ -50,7 +50,7 @@ sigaction(SIGINT, &sa, NULL);
 
 @ Allow the parent to proceed.
 This must be done when wayland is fully initialized, because parent may exit immediately,
-and the signal which was solicited by |prctl| will be delivered in the middle of
+and |SIGINT| will be delivered in the middle of
 wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
 output.
 
@@ -236,6 +236,5 @@ wl_shm_pool_destroy(pool);
 #include <wayland-client.h>
 #include <errno.h>
 #include <signal.h>
-#include <sys/prctl.h>
 
 @* Index.
