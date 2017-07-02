@@ -32,7 +32,8 @@ int main(int argc, char *argv[])
 
     @<Notify parent@>;
 
-    while (wl_display_dispatch(display) != -1) {
+    while (wl_display_dispatch(display) != -1) { /* this function blocks - it exits only
+                                                    when window focus is changed */
 	;
     }
 
