@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 {
     @<Check if we were started correctly@>;
 
-    @<Install signal handlers@>;
+    @<Install signal handler@>;
 
     @<Setup wayland@>;
     @<Create surface@>;
