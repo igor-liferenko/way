@@ -10,7 +10,7 @@
 @<Header files@>;
 typedef uint32_t pixel_t;
 @<Global...@>;
-void terminate(int x) {
+void terminate(int signum) {
   wl_display_disconnect(display);
   exit(0);
 }
@@ -51,8 +51,8 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
 
 @ @<Install signal...@>=
 struct sigaction sa;
-memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
+sigemptyset(&sa.sa_mask);
 sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
 
