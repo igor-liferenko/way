@@ -21,14 +21,14 @@ int main(int argc, char *argv[])
 {
     @<Check if we were started correctly@>;
 
+    @<Install signal handlers@>;
+
     @<Setup wayland@>;
     @<Create surface@>;
     @<Create buffer@>;
 
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_commit(surface);
-
-    @<Install signal handlers@>;
 
     @<Notify parent@>;
 
@@ -57,10 +57,12 @@ sa.sa_flags = 0;
 sigaction(SIGINT, &sa, NULL);
 
 @ Allow the parent to proceed.
-This must be done when wayland is fully initialized, because |SIGINT|
-may be sent in the middle of
+This must be done when signal handler is installed {\it and\/} when wayland is fully initialized,
+because |SIGINT| may be received in the middle of
 wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
 output.
+
+This must also be done before exiting in case of error to avoid parent being blocked forever.
 
 @<Notify parent@>=
 char dummy;
