@@ -8,7 +8,7 @@
 
 @c
 @<Header files@>;
-typedef uint32_t pixel_t; @#
+typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int signum) {
   wl_display_disconnect(display);
