@@ -65,7 +65,7 @@ output.
 This must also be done before exiting in case of error to avoid parent being blocked forever.
 
 @<Notify parent@>=
-char dummy;
+char dummy; @+
 write(pipefd, &dummy, 1);
 
 @ If we do not use this, we get "window is not responding" warning.
