@@ -1,6 +1,9 @@
 \let\lheader\rheader
 \datethis
 
+% FIXME: how mmap() is supposed to fit in example
+% from https://jan.newmarch.name/Wayland/SharedMemory/ ?
+
 @s int32_t int
 
 @ @d WIDTH 1024
