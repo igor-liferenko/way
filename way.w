@@ -67,6 +67,16 @@ output.
 
 This must also be done before exiting in case of error to avoid parent being blocked forever.
 
+Currently, the behavior is this: if parent did not do |read| before this |write| happens,
+this |write| does not block, instead it continues operation as if the data was read.
+The parent, if it performs |read| later, will get the passed data it its integrity.
+Seems like the data is buffered, ready to be read when necessary.
+
+If this is so, then the buffer limit is probably indicated by return value of |write|.
+
+But in our program nothing should change even if this |write| blocks until parent
+calls |read|. The main point is that the notification gets passed through.
+
 @<Notify parent@>=
 char dummy; @+
 write(pipefd, &dummy, 1);
