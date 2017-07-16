@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 @<Check if we were started correctly@>=
 int pipefd;
 if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
-  fprintf(stderr, "This program must be run by metafont.\x0a");
+  fprintf(stderr, "This program must be run by metafont.\n");
   exit(EXIT_FAILURE);
 }
 
