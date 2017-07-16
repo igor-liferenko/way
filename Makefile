@@ -1,2 +1,2 @@
 way: way.c
-	gcc -o $@ $< -lwayland-client
+	$(CC) -o $@ $< -lwayland-client
