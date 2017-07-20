@@ -14,6 +14,7 @@
 typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int signum) {
+  (void) signum;
   wl_display_disconnect(display);
   exit(0);
 }
@@ -90,6 +91,7 @@ void
 handle_ping(void *data, struct wl_shell_surface *shell_surface,
 							uint32_t serial)
 {
+    (void) data;
     wl_shell_surface_pong(shell_surface, serial);
 }
 
@@ -97,11 +99,17 @@ void
 handle_configure(void *data, struct wl_shell_surface *shell_surface,
 		 uint32_t edges, int32_t width, int32_t height)
 {
+  (void) data;
+  (void) shell_surface;
+  (void) edges;
+  (void) width;
+  (void) height;
 }
 
 const struct wl_shell_surface_listener shell_surface_listener = {
 	handle_ping,
-	handle_configure
+	handle_configure,
+	NULL
 };
 
 @ The |display| object is the most important. It represents the connection
@@ -155,6 +163,8 @@ void registry_global(void *data,
     struct wl_registry *registry, uint32_t id,
     const char *interface, uint32_t version)
 {
+    (void) data;
+    (void) version;
     if (strcmp(interface, "wl_compositor") == 0)
         compositor = wl_registry_bind(registry, 
 				      id, 
@@ -169,7 +179,8 @@ void registry_global(void *data,
 }
 
 static const struct wl_registry_listener registry_listener = {
-    registry_global
+    registry_global,
+    NULL
 };
 
 @ A main design philosophy of wayland is efficiency when dealing with graphics. Wayland
