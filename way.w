@@ -14,7 +14,7 @@ from \hfil\break \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
 typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int signum) {
-  (void) signum;
+  (void) signum; /* FIXME: check that the value of |signum| is equal to 2 */
   wl_display_disconnect(display);
   exit(0);
 }
@@ -58,7 +58,8 @@ struct sigaction sa;
 sa.sa_handler = terminate;
 sigemptyset(&sa.sa_mask);
 sa.sa_flags = 0;
-sigaction(SIGINT, &sa, NULL);
+sigaction(SIGINT, &sa, NULL); /* FIXME: check the return value of |sigaction| to make sure
+  the call was successful */
 
 @ Allow the parent to proceed.
 This must be done when signal handler is installed {\it and\/} when wayland is fully initialized,
