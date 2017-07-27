@@ -14,7 +14,7 @@ from \hfil\break \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
 typedef uint32_t pixel_t;
 @<Global...@>;
 void terminate(int signum) {
-  (void) signum; /* FIXME: check that the value of |signum| is equal to 2 */
+  (void) signum;
   wl_display_disconnect(display);
   exit(0);
 }
