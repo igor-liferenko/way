@@ -4,7 +4,7 @@
 @s int32_t int
 
 @ FIXME: how |mmap| is supposed to fit in example
-from \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
+from \hfil\break \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
 
 @d WIDTH 1024
 @d HEIGHT 768
