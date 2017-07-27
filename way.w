@@ -1,12 +1,12 @@
 \let\lheader\rheader
 \datethis
 
-% FIXME: how mmap() is supposed to fit in example
-% from https://jan.newmarch.name/Wayland/SharedMemory/ ?
-
 @s int32_t int
 
-@ @d WIDTH 1024
+@ FIXME: how |mmap| is supposed to fit in example
+from \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
+
+@d WIDTH 1024
 @d HEIGHT 768
 
 @c
@@ -71,12 +71,8 @@ This must also be done before exiting in case of error to avoid parent being blo
 Currently, the behavior is this: if parent did not do |read| before this |write| happens,
 this |write| does not block, instead it continues operation as if the data was read.
 The parent, if it performs |read| later, will get the passed data it its integrity.
-Seems like the data is buffered, ready to be read when necessary.
-
-If this is so, then the buffer limit is probably indicated by return value of |write|.
-
-But in our program nothing should change even if this |write| blocks until parent
-calls |read|. The main point is that the notification gets passed through.
+The reason is that the data is buffered, ready to be read when necessary.
+(See \.{pipe(7)} for more info.)
 
 @<Notify parent@>=
 char dummy; @+
