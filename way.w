@@ -58,8 +58,10 @@ struct sigaction sa;
 sa.sa_handler = terminate;
 sigemptyset(&sa.sa_mask);
 sa.sa_flags = 0;
-sigaction(SIGINT, &sa, NULL); /* FIXME: check the return value of |sigaction| to make sure
-  the call was successful */
+if (sigaction(SIGINT, &sa, NULL) != 0) {
+  @<Notify parent@>;
+  exit(1);
+}
 
 @ Allow the parent to proceed.
 This must be done when signal handler is installed {\it and\/} when wayland is fully initialized,
@@ -137,7 +139,6 @@ collection of global objects from the server, filling in proxy variables represe
 struct wl_registry *registry;
 display = wl_display_connect(NULL);
 if (display == NULL) {
-    fprintf(stderr, "Error opening display\n");
     @<Notify parent@>;
     exit(1);
 }
@@ -148,7 +149,6 @@ wl_registry_add_listener(registry, &registry_listener, NULL); /* see |@<Get regi
 wl_display_dispatch(display);
 wl_display_roundtrip(display);
 if (compositor == NULL) {
-	fprintf(stderr, "Can't find compositor\n");
         @<Notify parent@>;
 	exit(1);
 }
@@ -213,13 +213,11 @@ surface object is of type |wl_shell_surface|, which is used for creating top lev
 @<Create surface@>=
 surface = wl_compositor_create_surface(compositor);
 if (surface == NULL) {
-	fprintf(stderr, "Can't create surface\n");
         @<Notify parent@>;
 	exit(1);
 }
 shell_surface = wl_shell_get_shell_surface(shell, surface);
 if (shell_surface == NULL) {
-	fprintf(stderr, "Can't create shell surface\n");
         @<Notify parent@>;
 	exit(1);
 }
