@@ -55,9 +55,8 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
 
 @ @<Install signal...@>=
 struct sigaction sa;
+memset(&sa, 0, sizeof sa);
 sa.sa_handler = terminate;
-sigemptyset(&sa.sa_mask);
-sa.sa_flags = 0;
 if (sigaction(SIGINT, &sa, NULL) != 0) {
   @<Notify parent@>;
   exit(1);
