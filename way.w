@@ -3,6 +3,8 @@
 
 @s int32_t int
 
+\font\logo=manfnt
+
 @ FIXME: how |mmap| is supposed to fit in example
 from \hfil\break \.{https://jan.newmarch.name/Wayland/SharedMemory/} ?
 
@@ -56,26 +58,29 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
 @ @<Install signal...@>=
 struct sigaction sa;
 sa.sa_handler = terminate;
-sigemptyset(&sa.sa_mask);
+sigemptyset(&sa.sa_mask); /* FIXME: see glibc source when |sigemptyset| returns |-1| and
+                             decide if a check is necessary here */
+@^FIXME@>
 sa.sa_flags = 0;
 if (sigaction(SIGINT, &sa, NULL) == -1) {
   @<Notify parent@>;
   exit(1);
 }
 
-@ Allow the parent to proceed.
+@ Allow {\logo METAFONT} to proceed.
 This must be done when signal handler is installed {\it and\/} when wayland is fully initialized,
 because |SIGINT| may be received in the middle of
 wayland initializaiton, which will cause segfault error in libwayland-client.so in \.{dmesg}
 output.
 
-This must also be done before exiting in case of error to avoid parent being blocked forever.
+This must also be done before exiting in case of error to avoid {\logo METAFONT} being blocked
+forever.
 
-Currently, the behavior is this: if parent did not do |read| before this |write| happens,
+The behavior is as follows: if parent did not do |read| before this |write| happens,
 this |write| does not block, instead it continues operation as if the data was read.
-The parent, if it performs |read| later, will get the passed data it its integrity.
-The reason is that the data is buffered, ready to be read when necessary.
-(See \.{pipe(7)} for more info.)
+The parent, if it performs |read| later, will get the passed data in its integrity.
+The reason is that the data is buffered, ready to be read when necessary
+(see \.{pipe(7)} for more info).
 
 @<Notify parent@>=
 char dummy; @+
