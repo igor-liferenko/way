@@ -58,14 +58,9 @@ if (argc < 2 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) ==
 @ @<Install signal...@>=
 struct sigaction sa;
 sa.sa_handler = terminate;
-sigemptyset(&sa.sa_mask); /* FIXME: see glibc source when |sigemptyset| returns |-1| and
-                             decide if a check is necessary here */
-@^FIXME@>
 sa.sa_flags = 0;
-if (sigaction(SIGINT, &sa, NULL) == -1) {
-  @<Notify parent@>;
-  exit(1);
-}
+sigemptyset(&sa.sa_mask);
+sigaction(SIGINT, &sa, NULL);
 
 @ Allow {\logo METAFONT} to proceed.
 This must be done when signal handler is installed {\it and\/} when wayland is fully initialized,
