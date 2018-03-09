@@ -25,8 +25,6 @@ void terminate(int signum) {
 
 int main(void)
 {
-    @<Check if we were started correctly@>;
-
     @<Install signal handler@>;
 
     @<Setup wayland@>;
@@ -44,14 +42,6 @@ int main(void)
     }
 
     return EXIT_SUCCESS;
-}
-
-@ Before doing anything.
-
-@<Check if we were started correctly@>=
-if (fcntl(STDOUT_FILENO, F_GETFL) == -1) {
-  fprintf(stderr, "This program must be run by metafont.\n");
-  exit(EXIT_FAILURE);
 }
 
 @ @<Install signal...@>=
