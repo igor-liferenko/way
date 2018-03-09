@@ -23,7 +23,7 @@ void terminate(int signum) {
 @<Keep-alive@>;
 @<Get registry@>;
 
-int main(int argc, char *argv[])
+int main(void)
 {
     @<Check if we were started correctly@>;
 
@@ -49,8 +49,7 @@ int main(int argc, char *argv[])
 @ Before doing anything.
 
 @<Check if we were started correctly@>=
-int pipefd;
-if (argc == 1 || sscanf(argv[1], "%d", &pipefd) != 1 || fcntl(pipefd, F_GETFL) == -1) {
+if (fcntl(STDOUT_FILENO, F_GETFL) == -1) {
   fprintf(stderr, "This program must be run by metafont.\n");
   exit(EXIT_FAILURE);
 }
@@ -79,7 +78,7 @@ The reason is that the data is buffered, ready to be read when necessary
 
 @<Notify parent@>=
 char dummy; @+
-write(pipefd, &dummy, 1);
+write(STDOUT_FILENO, &dummy, 1);
 
 @ If we do not use this, we get "window is not responding" warning.
 |shell_surface_listener| is activated with |wl_shell_surface_add_listener|
@@ -243,9 +242,7 @@ global Wayland shared memory object. This is then used to create a
 Wayland buffer, which is used for most of the window operations later.
 
 @<Create buffer@>=
-int fd;
-sscanf(argv[2], "%d", &fd);
-pool = wl_shm_create_pool(shm, fd, WIDTH*HEIGHT*sizeof(pixel_t));
+pool = wl_shm_create_pool(shm, STDIN_FILENO, WIDTH*HEIGHT*sizeof(pixel_t));
 buffer = wl_shm_pool_create_buffer(pool,
   0, WIDTH, HEIGHT,
   WIDTH*sizeof(pixel_t), WL_SHM_FORMAT_XRGB8888);
