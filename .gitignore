@@ -1,11 +1,2 @@
-*.c
-*.o
-*.bin
-*.dvi
-*.idx
-*.log
-*.ps
-*.scn
-*.tex
-*.toc
-way
+damage
+surface
